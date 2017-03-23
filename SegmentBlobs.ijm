@@ -24,7 +24,7 @@ macro "Segment Particles"{
 
 	// Create a selection of all the binary objects in the image. This is done
 	// by finding the maxima of the image and using the ROI manager and the 
-	// doWand tool to save the slections of the objects.
+	// doWand tool to save the selections of the objects.
 	run("Find Maxima...", "noise=10 output=List");
 	numBlobs = nResults;
 	for (i = 0; i < numBlobs; i++){
