@@ -14,9 +14,21 @@ macro "Isolate Paper"{
 	if (!File.exists(cropDir)){
 		File.makeDirectory(cropDir);
 	}
-	
+
+	// Isolate the largest spot from the image.
 	for (i = 0; i < imglist.length; i++){
-		//TODO convert images into PNG.
+		curr_img = imglist[i];
+		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
+			open(inDir + "\\" + curr_img);
+			preprocess(curr_img);
+			isolateLargestSpot(curr_img);
+			run("Select None");
+			run("Fill Holes");
+			run("Outline");
+			run("Options...", "iterations=2 count=1 black do=Dilate");
+			saveAs("PNG", houghDir + "bin" + i + ".png");
+			run("Close");
+		}
 	}
 	setBatchMode("Exit and Display");
 }
@@ -86,3 +98,4 @@ function isolateLargestSpot(img){
 	roiManager("Deselect");
 
 	IJ.deleteRows(res_idx, nResults - 1);
+}
