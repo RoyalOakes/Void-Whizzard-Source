@@ -30,6 +30,23 @@ macro "Isolate Paper"{
 			run("Close");
 		}
 	}
+
+	houghlist = getFileList(houghDir);	// The images to be transformed.
+	thetaAxisSize = "720";
+	radiusAxisSize = "720";
+	minContrast = "30";
+
+	// Transform the binary images
+	for (i = 0; i < houghlist.length; i++){
+		if (startsWith(houghlist[i], "bin")) {
+			in  = houghDir + houghlist[i];
+			num = substring(replace(houghlist[i], ".png", ""), 3);
+			out = houghDir + "hough" + num + ".png";
+			print(houghlist[i] + " -> hough" + num);
+			call("mouse.HoughTransform.main", in, out, thetaAxisSize, radiusAxisSize, minContrast);
+		}
+	}
+		
 	setBatchMode("Exit and Display");
 }
 
