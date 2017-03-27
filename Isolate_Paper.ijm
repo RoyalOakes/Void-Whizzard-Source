@@ -50,9 +50,16 @@ macro "Isolate Paper"{
 		}
 	}
 
+	intsec_idxs = newArray(houghlist.length);	// The indices of the intersection points for each image.
+	intsec_lens = newArray(houghlist.length);	// The number of intersection points for each image.
+
+	// Process the hough images
 	for (i = 0; i < houghlist.length; i++){
-		idx_xx = processHough(houghDir + "bin" + i + ".png", houghDir + "hough" + i + ".png");
-		print("bin" + i + ": " + idx_xx);
+		temp_idx = processHough(houghDir + "bin" + i + ".png", houghDir + "hough" + i + ".png");
+		intsec_idxs[i] = temp_idx;
+		intsec_lens[i] = roiManager("Count") - temp_idx;
+		print("bin" + i + " Index: " + intsec_idxs[i]);	 // Debugging
+		print("bin" + i + " Length: " + intsec_lens[i]); // Debugging
 	}
 		
 	setBatchMode("Exit and Display");
@@ -126,10 +133,11 @@ function processHough(bin, hough){ //TODO FIX
 	//	print(aPos[i] * (180/PI));
 	//}
 
-	d = 15;
-	xSec = newArray(50); // The x value of the intersection points.
-	ySec = newArray(50); // The y value of the intersection points.
-	n = 0;
+	d = 15;							// Arbitrary constant used to detect intersections. Must be greater than 1.
+	// TODO Find better way to size the arrays.
+	xSec = newArray(150);	// The x value of the intersection points.
+	ySec = newArray(150); 	// The y value of the intersection points.
+	n = 0;							// The number of intersections for this hough transform.
 	
 	for (i = 0; i < xPos.length; i++){
 		for (j = i + 1; j < yPos.length; j++){
@@ -152,7 +160,7 @@ function processHough(bin, hough){ //TODO FIX
 	ret_count = 0;
 
 	for (i = 0; i < n; i++){
-		print(File.getName(bin) + "-" + i + " (" + xSec[i] + ", " + ySec[i] + ")"); // Debugging
+		//print(File.getName(bin) + "-" + i + " (" + xSec[i] + ", " + ySec[i] + ")"); // Debugging
 		if (xSec[i] < width && xSec[i] > 0 && ySec[i] < height && ySec[i] > 0){
 			makePoint(xSec[i], ySec[i]);
 			roiManager("Add");
@@ -163,6 +171,9 @@ function processHough(bin, hough){ //TODO FIX
 	}
 
 	IJ.deleteRows(res_idx, nResults - 1);
+
+	selectWindow(File.getName(hough));
+	run("Close");
 
  	return ret_idx;
 }
