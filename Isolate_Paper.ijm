@@ -1,4 +1,5 @@
 macro "Isolate Paper"{
+	start_time = getTime(); // Time how long the macro takes to execute.
 	setBatchMode(true);
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape redirect=None decimal=3");
 	
@@ -26,7 +27,9 @@ macro "Isolate Paper"{
 			run("Fill Holes");
 			run("Outline");
 			run("Options...", "iterations=2 count=1 black do=Dilate");
+			run("Select None");
 			saveAs("PNG", houghDir + "bin" + i + ".png");
+			selectWindow("bin" + i + ".png");
 			run("Close");
 		}
 	}
@@ -48,11 +51,15 @@ macro "Isolate Paper"{
 	}
 
 	for (i = 0; i < houghlist.length; i++){
-		idx_xx = processHough(houghDir + "hough" + i + ".png", houghDir + "bin" + i + ".png");
+		idx_xx = processHough(houghDir + "bin" + i + ".png", houghDir + "hough" + i + ".png");
 		print("bin" + i + ": " + idx_xx);
 	}
 		
 	setBatchMode("Exit and Display");
+	
+	stop_time = getTime();
+	print("Time: " + (stop_time - start_time) / 1000); // Print how long it took to execute the macro.
+	print("---------------------------------------------");
 }
 
 /*
@@ -141,15 +148,17 @@ function processHough(bin, hough){ //TODO FIX
 
 	selectWindow(File.getName(bin));
 
-	ret_idx = roiManager("Count");
+	ret_idx = roiManager("Count"); // The start of the intersections of the current paper.
+	ret_count = 0;
 
 	for (i = 0; i < n; i++){
-		//print("(" + xSec[i] + ", " + ySec[i] + ")"); // Debugging
+		print(File.getName(bin) + "-" + i + " (" + xSec[i] + ", " + ySec[i] + ")"); // Debugging
 		if (xSec[i] < width && xSec[i] > 0 && ySec[i] < height && ySec[i] > 0){
 			makePoint(xSec[i], ySec[i]);
 			roiManager("Add");
-			roiManager("Select", ret_idx + i);
+			roiManager("Select", ret_idx + ret_count);
 			roiManager("Rename", File.getName(bin) + "-" + i);
+			ret_count++;
 		}
 	}
 
