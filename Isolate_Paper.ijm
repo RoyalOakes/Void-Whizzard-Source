@@ -1,11 +1,14 @@
 macro "Isolate Paper"{
 	start_time = getTime(); // Time how long the macro takes to execute.
+	run("ROI Manager...");	// Open ROImanager.
+	
 	setBatchMode(true);
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape redirect=None decimal=3");
 	
 	//Open Images
 	inDir = getDirectory("Choose a Directory");	// The directory that holds the input images.
 	imglist = getFileList(inDir);				// The list of files in the inDir.
+	// TODO Make sure that directories work for linux and mac. They use '/' not '\'.
 	houghDir = inDir + "\hough\\";				// The directory where the hough transforms will be saved.
 	cropDir = inDir + "\cropped\\";				// The directory where the cropped images will be saved.
 	if (!File.exists(houghDir)){
@@ -27,7 +30,7 @@ macro "Isolate Paper"{
 			run("Fill Holes");
 			run("Outline");
 			run("Options...", "iterations=2 count=1 black do=Dilate");
-			run("Select None");
+			run("Select None"); // TODO Can This be removed?
 			saveAs("PNG", houghDir + "bin" + i + ".png");
 			selectWindow("bin" + i + ".png");
 			run("Close");
@@ -37,7 +40,7 @@ macro "Isolate Paper"{
 	houghlist = getFileList(houghDir);	// The images to be transformed.
 	thetaAxisSize = "720";
 	radiusAxisSize = "720";
-	minContrast = "30";
+	minContrast = "30";		// Must be less than 255.
 
 	// Transform the binary images
 	for (i = 0; i < houghlist.length; i++){
@@ -50,16 +53,21 @@ macro "Isolate Paper"{
 		}
 	}
 
+	// TODO Make sure that the arrays are not to big. (houghlist.length includes binary images.)
 	intsec_idxs = newArray(houghlist.length);	// The indices of the intersection points for each image.
 	intsec_lens = newArray(houghlist.length);	// The number of intersection points for each image.
 
-	// Process the hough images
+	// Process the hough images. The hough images and the binary images are saved in the same directory.
+	j = 0;
 	for (i = 0; i < houghlist.length; i++){
-		temp_idx = processHough(houghDir + "bin" + i + ".png", houghDir + "hough" + i + ".png");
-		intsec_idxs[i] = temp_idx;
-		intsec_lens[i] = roiManager("Count") - temp_idx;
-		print("bin" + i + " Index: " + intsec_idxs[i]);	 // Debugging
-		print("bin" + i + " Length: " + intsec_lens[i]); // Debugging
+		if (startsWith(houghlist[i], "hough")){
+			temp_idx = processHough(houghDir + "bin" + j + ".png", houghDir + "hough" + j + ".png");
+			intsec_idxs[j] = temp_idx;
+			intsec_lens[j] = roiManager("Count") - temp_idx;
+			print("bin" + j + " Index: " + intsec_idxs[i]);	 // Debugging
+			print("bin" + j + " Length: " + intsec_lens[i]); // Debugging
+			j++;
+		}
 	}
 		
 	setBatchMode("Exit and Display");
@@ -95,7 +103,7 @@ function preprocess(img){
  * bin - path to binary image
  * hough - path to hough transform image.
  */
-function processHough(bin, hough){ //TODO FIX
+function processHough(bin, hough){ 
 	open(hough);
 	thetaAxisSize = getWidth();
 	rAxisSize = getHeight();
@@ -105,7 +113,7 @@ function processHough(bin, hough){ //TODO FIX
 	hypotenuse = sqrt((width*width) + (height*height));
 	selectWindow(File.getName(hough));
 	run("8-bit"); // Convert RGB to 8-bit.
-	run("Find Maxima...", "noise=30 output=[Point Selection]");
+	run("Find Maxima...", "noise=20 output=[Point Selection]"); 
 	res_idx = nResults; // The index of the first result in the result table.
 	run("Measure");
 
@@ -133,7 +141,7 @@ function processHough(bin, hough){ //TODO FIX
 	//	print(aPos[i] * (180/PI));
 	//}
 
-	d = 15;							// Arbitrary constant used to detect intersections. Must be greater than 1.
+	d = 15;		// Arbitrary constant used to detect intersections. Must be greater than 1.
 	// TODO Find better way to size the arrays.
 	xSec = newArray(150);	// The x value of the intersection points.
 	ySec = newArray(150); 	// The y value of the intersection points.
@@ -165,7 +173,7 @@ function processHough(bin, hough){ //TODO FIX
 			makePoint(xSec[i], ySec[i]);
 			roiManager("Add");
 			roiManager("Select", ret_idx + ret_count);
-			roiManager("Rename", File.getName(bin) + "-" + i);
+			roiManager("Rename", File.getName(bin) + "-" + i); //Debugging.
 			ret_count++;
 		}
 	}
@@ -189,7 +197,7 @@ function isolateLargestSpot(img){
 	resetThreshold();
 	roiManager("Add");
 	roiManager("Select", man_idx);
-	if (selectionType() != 9){
+	if (selectionType() != 9){ // Makes sure that the selection is a compsite selection.
 		roiManager("Delete");
 		roiManager("Deselect");
 		return;
