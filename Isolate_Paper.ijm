@@ -64,8 +64,8 @@ macro "Isolate Paper"{
 			temp_idx = processHough(houghDir + "bin" + j + ".png", houghDir + "hough" + j + ".png");
 			intsec_idxs[j] = temp_idx;
 			intsec_lens[j] = roiManager("Count") - temp_idx;
-			print("bin" + j + " Index: " + intsec_idxs[i]);	 // Debugging
-			print("bin" + j + " Length: " + intsec_lens[i]); // Debugging
+			print("bin" + j + " Index: " + intsec_idxs[j]);	 // Debugging
+			print("bin" + j + " Length: " + intsec_lens[j]); // Debugging
 			j++;
 		}
 	}
