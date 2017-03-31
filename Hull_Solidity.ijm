@@ -16,6 +16,17 @@ macro "SS"{
 	setBatchMode("Exit and Display");
 }
 
+/*
+ * Determines the points on the convex hull that, when removed, increase the solidity of the
+ * convex hull. These points are called false corners. This is done by iterating over all of
+ * points and measuring the hull solidity when a point is removed. Any point that, when removed,
+ * produces a hull solidity that is greater than the original hull solidity is returned in an
+ * array.
+ * 
+ * points - An array of indices of points in the ROIManager that describe the convex hull.
+ * 
+ * Returns an array containg the positions of false corners in the given array of points.
+ */
 function getFalseCorners(points){
 	newpts = newArray(1);
 	for (i = 0; i < pts.length; i++){
@@ -24,6 +35,16 @@ function getFalseCorners(points){
 	}
 }
 
+/*
+ * This function accepts an array that contains indices of points in the ROIManager. A convex 
+ * hull is then constructed from the points. The best fit box of the convex hull is determined
+ * and the area of the convex hull divided by the area of the best fit bounding box is returned.
+ * This is value is called the "convex hull solidity" or "hull solidity" for short.
+ * 
+ * points - An array containing the indices of the points in the ROIManager.
+ * 
+ * Returns the hull solidity of the convex hull constructed from points.
+ */
 function getHullSolidity(points){
 	hull_idx = roiManager("Count"); // Index of the convex hull in the roiManager.
 	roiManager("Select", points);
@@ -62,19 +83,24 @@ function getHullSolidity(points){
 /* 
  * This function breaks up a convex hull into the lines that compose it.
  * 
- * Accepts a pointer to a convex hull in the ROIManager and an image. Saves the lines in the ROIManager.
- * Returns an index to the first line.
+ * img - The name of the image that the convex hull was contructed on. 
+ * con_idx - The index of the convex hull in the ROIManager.
+ * 
+ * Returns the index to the first line in the roiManager.
  */
 function convexHullToLines(img, con_idx){
 	selectWindow(img);
 	roiManager("Select", con_idx);
-	getSelectionCoordinates(x, y);
+	getSelectionCoordinates(x, y);	// Get the points that define the convex hull.
 
+	// This adds the value at position 0 to the end of the array. This is done facilitate the
+	// construction of the lines later on.
 	x = Array.concat(x, x[0]);
 	y = Array.concat(y, y[0]);
 
 	ret_idx = roiManager("Count");
 
+	// Make the lines and add them to the ROIManager.
 	for (i = 0; i < x.length - 1; i++){
 		makeLine(x[i], y[i], x[i + 1], y[i + 1]);
 		roiManager("Add");
@@ -84,10 +110,25 @@ function convexHullToLines(img, con_idx){
 	return ret_idx;
 }
 
+/*
+ * Fits a box with the smallest possible area that circumscribes the given convex hull. This is
+ * done by breaking the convex hull into its component lines. The angle between each line and
+ * the x axis of the image is measured. Then the convex hull is rotated to each of these angles.
+ * Then the area of the bounding box of the rotated convex hull is measured. The rotation that
+ * gives the bounding box with the smallest area is kept. Then the selection of the smallest
+ * bounding box is returned.
+ * 
+ * hull_idx - The index of the convex hull in the ROIManager.
+ * line_idx - The index of the first line that makes up the convex hull in the ROIManager.
+ * line_num - The number of lines in the ROIManager that make up the convex hull.
+ * 
+ * Returns the best fit bounding box in the ROIManager.
+ */
 function hullBestFitBox(hull_idx, line_idx, line_num){
 	res_idx = nResults;
-	angles = newArray(line_num);
-	
+	angles = newArray(line_num); // Array containing the angels of each line.
+
+	// Get the angles of the lines.
 	for (i = 0; i < line_num; i++){
 		roiManager("Select", line_idx + i);
 		run("Measure");
@@ -96,6 +137,7 @@ function hullBestFitBox(hull_idx, line_idx, line_num){
 
 	IJ.deleteRows(res_idx, nResults - 1);
 
+	// Select the smallest box.
 	min = 2147483647;
 	minBox = 0;
 	for (i = 0; i < angles.length; i++){
@@ -111,7 +153,8 @@ function hullBestFitBox(hull_idx, line_idx, line_num){
 	}
 
 	IJ.deleteRows(res_idx, nResults - 1);
-	
+
+	// Reconstruct the smallest bounding box and add it to the ROIManager.
 	roiManager("Select", hull_idx);
 	run("Rotate...", "  angle=" + angles[minBox]);
 	run("To Bounding Box");
@@ -121,6 +164,7 @@ function hullBestFitBox(hull_idx, line_idx, line_num){
 
 /*
  * Creates an aray that can be used to select roi's in the roimanager.
+ * 
  * Returns an array containing the indices of the roi's in the roimanager to be selected.
  */
 function roiSelect(start, end){
@@ -132,6 +176,9 @@ function roiSelect(start, end){
 	return sels;
 }
 
+/*
+ * Creates a new array from the given array that is missing the value at the given position.
+ */
 function arrayRemove(array, pos){
 	if (pos > array.length || pos < 0){
 		return NaN;
