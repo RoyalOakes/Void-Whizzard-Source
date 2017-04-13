@@ -1,6 +1,8 @@
-macro "SS"{
+macro "Hull Solidity"{
 	setBatchMode(true);
 	hull_idx = roiManager("Count");
+
+	open("F:\\Vezina Lab\\VSA\\Void Whizzard Source\\img\\VSA Papers\\hough\\bin13.png");
 
 	pt_idx = 353;
 	pt_num = 38;
@@ -10,7 +12,19 @@ macro "SS"{
 		pts[i] += pt_idx;
 	}
 
-	getFalseCorners(pts);
+	a = newArray(1);
+	for (j = 0; j < 2; j++){
+		a = getFalseCorners(getTitle(), pts);
+		print("---");
+	
+		for (i = 0; i < a.length; i++){
+			pts = arrayRemove(pts, a[i]);
+		}
+	}
+
+	roiManager("Select", pts);
+	roiManager("Combine");
+	run("Convex Hull");
 	
 	//print(getHullSolidity(pts)); 
 	setBatchMode("Exit and Display");
@@ -27,12 +41,27 @@ macro "SS"{
  * 
  * Returns an array containg the positions of false corners in the given array of points.
  */
-function getFalseCorners(points){
+function getFalseCorners(img, points){
+	hs_o = getHullSolidity(img, points);	// The original hull solidity.
+	hs_c = 0;						// The hull solidity of the current set of points.
+
+	print("Original: " + hs_o);
+	
+	falseCorners = newArray(pts.length);
+	n = 0;
 	newpts = newArray(1);
 	for (i = 0; i < pts.length; i++){
 		newpts = arrayRemove(points, i);
-		print("Round " + i + ": " + getHullSolidity(newpts));
+		hs_c = getHullSolidity(img, newpts);
+		print("Remove " + i + ": " + hs_c);
+		if (hs_c > hs_o){
+			falseCorners[n] = i;
+			n++;
+		}
 	}
+
+	return Array.trim(falseCorners, n);
+	print(n);
 }
 
 /*
@@ -45,14 +74,14 @@ function getFalseCorners(points){
  * 
  * Returns the hull solidity of the convex hull constructed from points.
  */
-function getHullSolidity(points){
+function getHullSolidity(img, points){
 	hull_idx = roiManager("Count"); // Index of the convex hull in the roiManager.
 	roiManager("Select", points);
 	roiManager("Combine");
 	run("Convex Hull");
 	roiManager("Add");
 	
-	line_idx = convexHullToLines(getTitle(), hull_idx);
+	line_idx = convexHullToLines(img, hull_idx);
 	line_num = roiManager("Count") - line_idx;
 	hullBestFitBox(hull_idx, line_idx, line_num);
 

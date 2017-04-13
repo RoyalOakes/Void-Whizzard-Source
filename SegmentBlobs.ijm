@@ -35,9 +35,7 @@ macro "Segment Particles"{
 	}
 	run("Select None");
 
-	// Close the results window from the find maxima during the find blob step.
-	selectWindow("Results");
-	run("Close");
+	IJ.deleteRows(0, nResults - 1);
 
 	// Create a distance map of the binary image. The distance map will be
 	// used to determine the radius of the embedded circles.
