@@ -117,3 +117,71 @@ function roiSelect(start, end){
 
 	return sels;
 }
+
+function pruneBranchLayer(bin_name, dist_name){
+	selectWindow(bin_name);
+	
+	run("Duplicate...", "title=Junctions");
+	
+	run("Duplicate...", "title=Ends");
+	run("Convolve...", "text1=[0 1 0\n1 10 1\n0 1 0\n] normalize");
+	setThreshold(200, 200);
+	run("Convert to Mask");
+
+	selectWindow("Junctions");
+	run("Convolve...", "text1=[0 1 0\n1 10 1\n0 1 0\n] normalize");
+	setThreshold(237, 255);
+	run("Convert to Mask");
+
+	imageCalculator("XOR create", bin_name,"Junctions");
+	rename("Branches");
+
+	/*
+	selectWindow("Ends");
+	st_idx = nResults;
+	run("Find Maxima...", "noise=0 output=[Point Selection]");
+	run("Measure");
+
+	selectWindow("Ends");
+	run("Close");
+
+	selectWindow("Branches");
+	run("Duplicate...", "title=Branches-1");
+	imageCalculator("AND create", "Branches-1", dist_name);
+
+	selectWindow("Branches-1");
+	run("Close");
+	selectWindow("Result of Branches-1");
+	rename("Weighted Branches");
+	
+	setForegroundColor(0, 0, 0);
+	count = nResults;
+	for (i = 0; i < count - st_idx; i++){
+		selectWindow("Branches");
+		doWand(getResult("X", i + st_idx), getResult("Y", i + st_idx), 0.0, "4-connected");
+		selectWindow("Weighted Branches");
+		run("Restore Selection");
+		run("Measure");
+		if ((getResult("StdDev", nResults - 1) / getResult("Area", nResults - 1)) > 0.20){
+			selectWindow("Branches");
+			run("Fill", "slice");
+		}
+	}
+
+	IJ.deleteRows(st_idx, nResults - 1);
+
+	imageCalculator("OR create", "Branches","Junctions");
+
+	selectWindow("Branches");
+	run("Close");
+	selectWindow("Weighted Branches");
+	run("Close");
+	selectWindow("Junctions");
+	run("Close");
+	selectWindow(bin_name);
+	run("Close");
+
+	selectWindow("Result of Branches");
+	rename(bin_name);
+	*/
+}
