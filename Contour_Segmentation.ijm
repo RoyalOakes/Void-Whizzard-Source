@@ -12,16 +12,28 @@ macro "Contour_Segmentation"{
 	for (i = 0; i < nResults - res_idx; i++){
 		selectWindow(img);
 		doWand(getResult("X", i + res_idx), getResult("Y", i + res_idx));
+		//roiManager("Add"); Debugging
 		
-		run("Interpolate", "interval=5 smooth adjust");
-		getSelectionCoordinates(x, y);
-		con = concavity(x, y);
-		Array.print(con);
-		Array.getStatistics(con, dummy, max, dummy, dummy);
-		print(max);
-		selectWindow("Temp");
-		for (j = 0; j < con.length; j++){
-			setPixel(x[j], y[j], (con[j]/max) * 255);
+		run("Interpolate", "interval=4 smooth adjust");
+		if (selectionType() != -1){
+			getSelectionCoordinates(x, y);
+			con = concavity(x, y);
+
+			// Debugging
+			print("Blob: " + i);
+			Array.print(con);
+			Array.getStatistics(con, dummy, max, mean, stdDev);
+			print("Max:" + max);
+			print("Mean:" + mean);
+			print("stdDev:" + stdDev);
+			print("-------------------");
+			selectWindow("Temp");
+			for (j = 0; j < con.length; j++){
+				if (con[j] < mean + (1.25 * stdDev)){
+					setPixel(x[j], y[j], (con[j]/max) * 255);
+				}
+			}
+			//Debugging
 		}
 	}
 
@@ -29,17 +41,20 @@ macro "Contour_Segmentation"{
 }
 
 function concavity(x, y){
-	infin = 1.0/0.0;
 	concav = newArray(x.length);
 	xp = Array.concat(x[x.length-1], x, x[0]);
 	yp = Array.concat(y[y.length-1], y, y[0]);
 	for (i = 1; i < x.length + 1; i++){
-		apre = atan((round(yp[i-1]) - round(yp[i]))/(xp[i-1] - xp[i]));
+		makeLine(xp[i-1], yp[i-1], xp[i+1], yp[i+1]);
+		roiManager("Add");
+		apre = atan((yp[i-1] - yp[i])/(xp[i-1] - xp[i]));
 		anex = atan((yp[i+1] - yp[i])/(xp[i+1] - xp[i]));
-		if (abs(apre - anex) < PI){
+		if (apre != apre || anex != anex){ // Check for NaN
+			concav[i-1] = 0;
+		} else if (abs(apre - anex) < PI){
 			concav[i-1] = abs(apre - anex);
 		} else {
-			concav[i] = PI - abs(apre - anex);
+			concav[i-1] = PI - abs(apre - anex);
 		}
 	}
 	return concav;
