@@ -1,142 +1,121 @@
+/*
+ * Creates a Medial Axis Transform of a binary image using a voroni diagram.
+ */
 macro "Medial Axis Transform"{
-	setBatchMode(true);
-
-	MAT_st_time = getTime();
-
-	run("Set Measurements...", "area mean standard min perimeter shape redirect=None decimal=3");
-	run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel global");
+	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape feret's redirect=None decimal=3");
 	
-	orig_name = getTitle();
-	run("Select None");
-
-	makeDistanceMap(orig_name);
-	makeBoundaryMap(orig_name);
-	makeVoronoi(orig_name);
-
-	selectWindow("Voronoi");
-	setThreshold(1, 255);
-	run("Convert to Mask");
-
-	//pruneBranches("Voronoi", "Distance");
-
-	imageCalculator("AND create", "Voronoi","Distance");
-	setThreshold(1, 255);
-	run("Convert to Mask");
-
-	selectWindow("Voronoi");
-	run("Close");
-	selectWindow("Result of Voronoi");
-	rename("MAT");
-	
-
-	MAT_en_time = getTime();
-	print(((MAT_en_time - MAT_st_time) / 1000) + " sec.");
-	
-	setBatchMode("exit and display");
-}
-
-/* 
- * Creates an image containing the distance map from bin_name.
- */
-function makeDistanceMap(bin_name){
-	selectWindow(bin_name);
-	run("Duplicate...", "title=Distance");
-	run("Distance Map");
-	run("Select None");
+	img = getTitle();
+	makeVoronoi(img, 50);
 }
 
 /*
- * Creates an image containing the boundaries of bin_name
- */
-function makeBoundaryMap(bin_name){
-	selectWindow(bin_name);
-	run("Duplicate...", "title=Boundary");
-	run("Outline");
-	run("Select None");
-}
-
-/*
- * Creates an image containing the internal vornoi diagrams of all spots within an image.
+ * Makes a composite voronoi diagram from a given image. The image is assumed to be binary. This
+ * function also accepts a threshold that donotes the minimum length of the perimeter of a spot
+ * for the spot to be turned into a voronoi diagram. If a spot has a perimenter that is less than
+ * the threshold, the spot is converted into a single point from its centroid.
  * 
- * Each spot is isolated from the image and stored in 'Voronoi_t'. The selections 
- * are interpolated and a voronoi diagram is computed for the selection. The 
- * edges of the voronoi that are outside the selection are trimmed, and the edges
- * within the selection are transfered to 'Voronoi.' Spots with perimeter less 
- * than 50 pixels are converted into ultimate points.
- *
+ * img - The title of the image to be processed.
+ * threshold - The minimum perimeter for a spot to be turned into a vornonoi diagram.
  */
-function makeVoronoi(bin_name){
-	st_idx = nResults;
-	selectWindow(bin_name);
-	newImage("Voronoi", "8-bit black", getWidth(), getHeight(), 1);
-
-	selectWindow(bin_name);
-	run("Find Maxima...", "noise=0 output=[Point Selection]");
+function makeVoronoi(img, threshold){
+	selectWindow(img);
+	width = getWidth();
+	height = getHeight();
+	newImage("Voronoi", "8-bit black", width, height, 1);	// The image where the composite 
+															// voronoi will be stored.
+	newImage("Temp", "8-bit black", width, height, 1);		// A temportary image to assist
+															// with the construction of the voronoi.
+	selectWindow(img);
+	res_idx = nResults; // The starting index for measurments in the results table.
+	run("Select None");
+	run("Find Maxima...", "noise=10 output=[Point Selection]");	// Get all the spots in the image.
 	run("Measure");
-	circ_idx = nResults;
-	for (i = 0; i < circ_idx - st_idx; i++){
-		newImage("Voronoi_t", "8-bit black", getWidth(), getHeight(), 1);
-
-		selectWindow(bin_name);
-		doWand(getResult("X", st_idx + i), getResult("Y", st_idx + i));
-		selectWindow("Voronoi_t");
-		run("Restore Selection");
-		run("Measure");
-		if ((getResult("Circ.", circ_idx + i) < 0.73)){
-			run("Interpolate", "interval=5 adjust");
-			getSelectionCoordinates(x, y);
-			for (j = 0; j < x.length; j++){
-				setPixel(x[j], y[j], 255);
-			}
-			run("Voronoi");
-
-			run("Make Inverse");
-			run("Cut");
-			run("Select None");
-		} else {
-			setForegroundColor(255, 255, 255);
-			run("Fill", "slice");
-			run("Ultimate Points");	
-		}
-
-		imageCalculator("OR create", "Voronoi","Voronoi_t");
-
-		selectWindow("Voronoi_t");
-		run("Close");
-
-		selectWindow("Voronoi");
-		run("Close");
-
-		selectWindow("Result of Voronoi");
-		rename("Voronoi");
-	}
 	run("Select None");
 
-	IJ.deleteRows(st_idx, nResults - 1);
+	roi_idx = roiManager("Count"); // The index of the selection of the first spot from the image.
+
+	numSpot = nResults - res_idx;
+	for (i = 0; i < numSpot; i++){ // Store all the spots in the roiManager.
+		doWand(getResult("X", res_idx + i), getResult("Y", res_idx +i));
+		roiManager("Add");
+	}
+
+	IJ.deleteRows(res_idx, nResults);
+
+	// Make voronoi diagrams of all the spots above the perimenter threshold.
+	for (i = 0; i < numSpot; i++){
+		selectWindow("Temp");
+		roiManager("Select", roi_idx + i);
+		run("Measure");
+
+		if (getResult("Perim.", res_idx + i) > threshold){	// Voronoi
+			run("Interpolate", "interval=3 adjust");
+			getSelectionCoordinates(x, y);
+			makeSelection("point", x, y);
+			setForegroundColor(255, 255, 255);
+			run("Draw", "slice");
+			setThreshold(1, 255);
+			run("Convert to Mask");
+			run("Voronoi");
+			roiManager("Select", roi_idx + i);
+			run("Copy");
+
+			setForegroundColor(0, 0, 0);
+			makeRectangle(0, 0, width, height);
+			run("Fill", "slice");
+
+			selectWindow("Voronoi");
+			roiManager("Select", roi_idx + i);
+			run("Paste");
+		} else {	// Centroid
+			makePoint(getResult("X", res_idx + i), getResult("Y", res_idx + i));
+			setForegroundColor(255, 255, 255);
+			run("Draw", "slice");
+			setThreshold(1, 255);
+			run("Convert to Mask");
+			roiManager("Select", roi_idx + i);
+			run("Copy");
+
+			setForegroundColor(0, 0, 0);
+			makeRectangle(0, 0, width, height);
+			run("Fill", "slice");
+
+			selectWindow("Voronoi");
+			roiManager("Select", roi_idx + i);
+			run("Paste");
+		}
+	}
+
+	// Make the voronoi diagram binary.
+	selectWindow("Voronoi");
+	setThreshold(1, 255);
+	run("Convert to Mask");
+
+	IJ.deleteRows(res_idx, nResults);
+
+	// Delete the temporary window.
+	selectWindow("Temp");
+	run("Close");
+
+	// Delete the selections in the roiManger.
+	sels = newArray(1);
+	sels = roiSelect(roi_idx, roiManager("Count"));
+	roiManager("Select", sels);
+	roiManager("Delete");
 }
 
-function pruneBranches(bin_name, dist_name){
-	same = false;
-	do {
-		selectWindow(bin_name);
-		run("Duplicate...", "title=Copy");
-		pruneBranchLayer(bin_name, dist_name);
-		imageCalculator("Difference create", "Copy","Voronoi");
-		
-		selectWindow("Result of Copy");
-		cpy_idx = nResults;
-		run("Measure");
-		if (getResult("Mean", cpy_idx) == 0){
-			same = true;
-		}
+/*
+ * Creates an aray that can be used to select roi's in the roimanager.
+ * 
+ * Returns an array containing the indices of the roi's in the roimanager to be selected.
+ */
+function roiSelect(start, end){
+	sels = Array.getSequence(end - start);
+	for (i = 0; i < sels.length; i++){
+		sels[i] += start;
+	}
 
-		selectWindow("Copy");
-		run("Close");
-		selectWindow("Result of Copy");
-		run("Close");
-
-		IJ.deleteRows(cpy_idx, cpy_idx);
-	} while (same == false);
+	return sels;
 }
 
 function pruneBranchLayer(bin_name, dist_name){
@@ -157,6 +136,7 @@ function pruneBranchLayer(bin_name, dist_name){
 	imageCalculator("XOR create", bin_name,"Junctions");
 	rename("Branches");
 
+	/*
 	selectWindow("Ends");
 	st_idx = nResults;
 	run("Find Maxima...", "noise=0 output=[Point Selection]");
@@ -203,24 +183,5 @@ function pruneBranchLayer(bin_name, dist_name){
 
 	selectWindow("Result of Branches");
 	rename(bin_name);
-}
-
-/*
- * Returns the number of 4 connected neighbors a pixel has.
- */
-function neighborCount_4(x, y){
-	if (!is("binary")){
-		exit("8-bit Binary Image Required.");
-	}
-
-	if (getPixel(x, y) == 0){
-		return 0;
-	}
-
-	u = getPixel(x, y - 1);
-	d = getPixel(x, y + 1);
-	l = getPixel(x - 1, y);
-	r = getPixel(x + 1, y);
-
-	return (u + d + l + r) / 255;
+	*/
 }

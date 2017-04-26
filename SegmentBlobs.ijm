@@ -247,7 +247,7 @@ function erodeDilate(val){
  * should be added to the selections.
  */
 function matchPointToSpot(xPos, yPos, num){
-	order = newArray(num);
+	order = newArray(nResults);
 	
 	for (i = 0; i < nResults; i++){
 		max = 2147483647;
@@ -267,7 +267,7 @@ function matchPointToSpot(xPos, yPos, num){
  * determines the positions of new spots.
  */
 function findNewSpots(xPos, yPos, num){
-	order = newArray(nResults);
+	order = newArray(num);
 
 	for (i = 0; i < num; i++){
 		for (j = 0; j < nResults; j++){
