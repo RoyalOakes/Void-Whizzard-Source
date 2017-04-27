@@ -15,7 +15,7 @@ macro "Hough_Transform"{
 	minContrast = "30";
 
 	// Do the transform. Images must be PNG.
-	call("mouse.HoughTransform.main", input, output, thetaAxisSize, radiusAxisSize, minContrast);
+	call("HoughTransform.main", input, output, thetaAxisSize, radiusAxisSize, minContrast);
 
 	// Open the input image.
 	open(input);

@@ -1,11 +1,11 @@
 macro "Hull Solidity"{
-	setBatchMode(true);
+	//setBatchMode(true);
 	hull_idx = roiManager("Count");
 
-	open("F:\\Vezina Lab\\VSA\\Void Whizzard Source\\img\\VSA Papers\\hough\\bin13.png");
+	//open("F:\\Vezina Lab\\VSA\\Void Whizzard Source\\img\\VSA Papers\\hough\\bin13.png");
 
-	pt_idx = 353;
-	pt_num = 38;
+	pt_idx = 114;
+	pt_num = 21;
 
 	pts = Array.getSequence(pt_num);
 	for (i = 0; i < pts.length; i++){
@@ -13,21 +13,21 @@ macro "Hull Solidity"{
 	}
 
 	a = newArray(1);
-	for (j = 0; j < 2; j++){
+	//for (j = 0; j < 2; j++){
 		a = getFalseCorners(getTitle(), pts);
 		print("---");
 	
 		for (i = 0; i < a.length; i++){
 			pts = arrayRemove(pts, a[i]);
 		}
-	}
-
+	//}
+	print(pts);
 	roiManager("Select", pts);
 	roiManager("Combine");
 	run("Convex Hull");
 	
 	//print(getHullSolidity(pts)); 
-	setBatchMode("Exit and Display");
+	//setBatchMode("Exit and Display");
 }
 
 /*
@@ -47,7 +47,7 @@ function getFalseCorners(img, points){
 
 	print("Original: " + hs_o);
 	
-	falseCorners = newArray(pts.length);
+	falseCorners = newArray(pts.length); // TODO Find out where pts came from.
 	n = 0;
 	newpts = newArray(1);
 	for (i = 0; i < pts.length; i++){

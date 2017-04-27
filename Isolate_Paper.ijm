@@ -38,8 +38,8 @@ macro "Isolate Paper"{
 	}
 
 	houghlist = getFileList(houghDir);	// The images to be transformed.
-	thetaAxisSize = "720";
-	radiusAxisSize = "720";
+	thetaAxisSize = "360";
+	radiusAxisSize = "360";
 	minContrast = "30";		// Must be less than 255.
 
 	// Transform the binary images
@@ -49,7 +49,7 @@ macro "Isolate Paper"{
 			num = substring(replace(houghlist[i], ".png", ""), 3);
 			out = houghDir + "hough" + num + ".png";
 			//print(houghlist[i] + " -> hough" + num); // Debugging
-			call("mouse.HoughTransform.main", in, out, thetaAxisSize, radiusAxisSize, minContrast);
+			call("HoughTransform.main", in, out, thetaAxisSize, radiusAxisSize, minContrast);
 		}
 	}
 
