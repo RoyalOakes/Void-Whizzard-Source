@@ -4,8 +4,8 @@ macro "Hull Solidity"{
 
 	//open("F:\\Vezina Lab\\VSA\\Void Whizzard Source\\img\\VSA Papers\\hough\\bin13.png");
 
-	pt_idx = 114;
-	pt_num = 21;
+	pt_idx = 193;
+	pt_num = 8;
 
 	pts = Array.getSequence(pt_num);
 	for (i = 0; i < pts.length; i++){
@@ -21,7 +21,7 @@ macro "Hull Solidity"{
 			pts = arrayRemove(pts, a[i]);
 		}
 	//}
-	print(pts);
+	Array.print(pts);
 	roiManager("Select", pts);
 	roiManager("Combine");
 	run("Convex Hull");
