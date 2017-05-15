@@ -70,23 +70,24 @@ macro "Isolate Paper"{
 		}
 	}
 
-	for (i = 0; i < intsec_idxs.length; i++){
+	for (i = 0; i < imglist.length; i++){
 		curr_img = imglist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
 			open(inDir + "\\" + curr_img);
-			pts = Array.getSequence(intsec_len[i]);
+			pts = Array.getSequence(intsec_lens[i]);
 			for (j = 0; j < pts.length; j++){
-				pts[j] += pt_idx;
+				pts[j] += intsec_idxs[i];
 			}
 
 			a = newArray(1);
 			a = getFalseCorners(getTitle(), pts);
-			print("---");
+			a = Array.reverse(a);
 
 			for (j = 0; j < a.length; j++){
 				pts = arrayRemove(pts, a[j]);
 			}
 			Array.print(pts);
+			print("---");
 			roiManager("Select", pts);
 			roiManager("Combine");
 			run("Convex Hull");
@@ -322,9 +323,34 @@ function getFalseCorners(img, points){
 			n++;
 		}
 	}
+	/*
+	// Remove pairs of points.
+	falseCorners2 = newArray(pts.length * 2); // TODO Find out where pts came from.
+	n2 = 0;
+	newpts2 = newArray(1);
+	for (i = 0; i < pts.length; i++){
+		for (j = (i + 1); j < pts.length; j++){
+			newpts2 = arrayRemove(points, j);
+			newpts2 = arrayRemove(newpts2, i);
+			hs_c = getHullSolidity(img, newpts2);
+			print("Remove [" + i, ", " + j + "]: " + hs_c);
+			if (hs_c > hs_o){
+				falseCorners2[n2++] = i;
+				falseCorners2[n2++] = j;
+			}
+		}
+	}
+
+	Array.trim(falseCorners, n);
+	Array.trim(falseCorners2, n2);
+
+	Fcorn = Array.concat(falseCorners, falseCorners2);
+	Fcorn = Array.sort(Fcorn);
+	Fcorn = arrayRemoveRepeats(Fcorn);
+	return Fcorn;
+	*/
 
 	return Array.trim(falseCorners, n);
-	print(n);
 }
 
 /*
@@ -472,7 +498,7 @@ function roiSelect(start, end){
  * Creates a new array from the given array that is missing the value at the given position.
  */
 function arrayRemove(array, pos){
-	if (pos > array.length || pos < 0){
+	if (pos >= array.length || pos < 0){
 		return NaN;
 	}
 
@@ -486,4 +512,19 @@ function arrayRemove(array, pos){
 	}
 
 	return retArray;
+}
+
+/*
+ * Assume array is sorted
+ */
+function arrayRemoveRepeats(array){
+	i = 0;
+	while (i < array.length - 1){
+		if (array[i] == array[i+1]){
+			array = arrayRemove(array, i + 1);
+		} else {
+			i++;
+		}
+	}
+	return array;
 }
