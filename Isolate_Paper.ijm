@@ -98,8 +98,8 @@ macro "Isolate Paper"{
 			run("Rotate... ", "angle=" + angle + " grid=1 interpolation=Bicubic");
 			run("Restore Selection");
 			run("Rotate...", "  angle=" + angle);
-			//run("Crop");
-			//saveAs("Tiff", cropDir + curr_img);
+			run("Crop");
+			saveAs("Tiff", cropDir + curr_img);
 			IJ.deleteRows(res_idx, nResults - 1);
 		}
 	}
@@ -317,7 +317,7 @@ function findIntersection(x1, y1, x2, y2, x3, y3, x4, y4){
 function getCorners(img, points){
 	print("Fitting " + img + "[" + points.length + "]");
 	if (points.length <= 4){
-		print("No removal\n------");
+		print("No removal\n---");
 		return points;
 	}
 	
@@ -326,9 +326,9 @@ function getCorners(img, points){
 
 	print("Original: " + hs_o);
 
-	// The number of combinations of 4 unique points from points array.
-	//numcomb = factorial(points.length) / (factorial(4) * factorial(points.length - 4));
-	//hulls = newArray(numcomb);
+	// The number of combinations of 4 unique points from points array =
+	// factorial(points.length) / (factorial(4) * factorial(points.length - 4));
+
 	minArea = 0.5 * areaFromPoints(points);
 	imax = 0;
 	jmax = 0;
@@ -521,34 +521,10 @@ function arrayRemove(array, pos){
 }
 
 /*
- * Assume array is sorted
+ * Given a set of indices that point to point selections in the ROImanager
+ * caluculates the area that is contained by the convex hull of those points.
+ * Assumes that there is an image open. 
  */
-function arrayRemoveRepeats(array){
-	i = 0;
-	while (i < array.length - 1){
-		if (array[i] == array[i+1]){
-			array = arrayRemove(array, i + 1);
-		} else {
-			i++;
-		}
-	}
-	return array;
-}
-
-/*
- * Computes the factorial of n.
- */
-function factorial(n){
-	if (n < 0){
-		return NaN;
-	}
-
-	ret = 1;
-	while (n > 0){
-		ret *= n--;
-	}
-}
-
 function areaFromPoints(points){
 	roiManager("Select", points);
 	roiManager("Combine");
