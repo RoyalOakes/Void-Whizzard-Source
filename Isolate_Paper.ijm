@@ -1,6 +1,6 @@
 macro "Isolate Paper"{
 	start_time = getTime(); // Time how long the macro takes to execute.
-	run("ROI Manager...");	// Open ROImanager.
+	//run("ROI Manager...");	// Open ROImanager.
 	
 	setBatchMode(true);
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape redirect=None decimal=3");
@@ -38,8 +38,8 @@ macro "Isolate Paper"{
 	}
 
 	houghlist = getFileList(houghDir);	// The images to be transformed.
-	thetaAxisSize = "360";
-	radiusAxisSize = "360";
+	thetaAxisSize = "400";
+	radiusAxisSize = "400";
 	minContrast = "30";		// Must be less than 255.
 
 	// Transform the binary images
@@ -80,21 +80,30 @@ macro "Isolate Paper"{
 			}
 
 			a = newArray(1);
-			a = getFalseCorners(getTitle(), pts);
-			a = Array.reverse(a);
-
-			for (j = 0; j < a.length; j++){
-				pts = arrayRemove(pts, a[j]);
-			}
-			Array.print(pts);
+			a = getCorners(getTitle(), pts);
+			
+			Array.print(a);
 			print("---");
-			roiManager("Select", pts);
+			roiManager("Select", a);
 			roiManager("Combine");
 			run("Convex Hull");
-		}
 
+			res_idx = nResults;
+			run("Measure");
+			angle = getResult("Angle", res_idx);
+			if (angle > 90){
+				angle -= 180;
+			}
+			run("Select None");
+			run("Rotate... ", "angle=" + angle + " grid=1 interpolation=Bicubic");
+			run("Restore Selection");
+			run("Rotate...", "  angle=" + angle);
+			//run("Crop");
+			//saveAs("Tiff", cropDir + curr_img);
+			IJ.deleteRows(res_idx, nResults - 1);
+		}
 	}
-		
+	roiManager("Save", cropDir + "RoiSet.zip");
 	setBatchMode("Exit and Display");
 	
 	stop_time = getTime();
@@ -138,7 +147,7 @@ function processHough(bin, hough){
 	hypotenuse = sqrt((width*width) + (height*height));
 	selectWindow(File.getName(hough));
 	run("8-bit"); // Convert RGB to 8-bit.
-	run("Find Maxima...", "noise=20 output=[Point Selection]"); 
+	run("Find Maxima...", "noise=25 output=[Point Selection]"); 
 	res_idx = nResults; // The index of the first result in the result table.
 	run("Measure");
 
@@ -305,52 +314,49 @@ function findIntersection(x1, y1, x2, y2, x3, y3, x4, y4){
  * 
  * Returns an array containg the positions of false corners in the given array of points.
  */
-function getFalseCorners(img, points){
+function getCorners(img, points){
+	print("Fitting " + img + "[" + points.length + "]");
+	if (points.length <= 4){
+		print("No removal\n------");
+		return points;
+	}
+	
 	hs_o = getHullSolidity(img, points);	// The original hull solidity.
 	hs_c = 0;						// The hull solidity of the current set of points.
 
 	print("Original: " + hs_o);
-	
-	falseCorners = newArray(pts.length); // TODO Find out where pts came from.
-	n = 0;
-	newpts = newArray(1);
-	for (i = 0; i < pts.length; i++){
-		newpts = arrayRemove(points, i);
-		hs_c = getHullSolidity(img, newpts);
-		print("Remove " + i + ": " + hs_c);
-		if (hs_c > hs_o){
-			falseCorners[n] = i;
-			n++;
-		}
-	}
-	/*
-	// Remove pairs of points.
-	falseCorners2 = newArray(pts.length * 2); // TODO Find out where pts came from.
-	n2 = 0;
-	newpts2 = newArray(1);
-	for (i = 0; i < pts.length; i++){
-		for (j = (i + 1); j < pts.length; j++){
-			newpts2 = arrayRemove(points, j);
-			newpts2 = arrayRemove(newpts2, i);
-			hs_c = getHullSolidity(img, newpts2);
-			print("Remove [" + i, ", " + j + "]: " + hs_c);
-			if (hs_c > hs_o){
-				falseCorners2[n2++] = i;
-				falseCorners2[n2++] = j;
+
+	// The number of combinations of 4 unique points from points array.
+	//numcomb = factorial(points.length) / (factorial(4) * factorial(points.length - 4));
+	//hulls = newArray(numcomb);
+	minArea = 0.5 * areaFromPoints(points);
+	imax = 0;
+	jmax = 0;
+	kmax = 0;
+	lmax = 0;
+	max = 0;
+	for (i = 0; i < points.length - 4; i++){
+		for (j = (i + 1); j < points.length - 3; j++){
+			for (k = (j + 1); k < points.length - 2; k++){
+				for (l = (k + 1); l < points.length - 1; l++){
+					arr = newArray(points[i], points[j], points[k], points[l]);
+					hs_c = getHullSolidity(img, arr);
+					if (hs_c > max && areaFromPoints(arr) > minArea){
+						max = hs_c;
+						imax = i;
+						jmax = j;
+						kmax = k;
+						lmax = l;
+					}
+				}
 			}
 		}
 	}
 
-	Array.trim(falseCorners, n);
-	Array.trim(falseCorners2, n2);
-
-	Fcorn = Array.concat(falseCorners, falseCorners2);
-	Fcorn = Array.sort(Fcorn);
-	Fcorn = arrayRemoveRepeats(Fcorn);
-	return Fcorn;
-	*/
-
-	return Array.trim(falseCorners, n);
+	print("Max: " + max);
+	
+	arr = newArray(points[imax], points[jmax], points[kmax], points[lmax]);
+	return arr;
 }
 
 /*
@@ -527,4 +533,30 @@ function arrayRemoveRepeats(array){
 		}
 	}
 	return array;
+}
+
+/*
+ * Computes the factorial of n.
+ */
+function factorial(n){
+	if (n < 0){
+		return NaN;
+	}
+
+	ret = 1;
+	while (n > 0){
+		ret *= n--;
+	}
+}
+
+function areaFromPoints(points){
+	roiManager("Select", points);
+	roiManager("Combine");
+	run("Convex Hull");
+	res_idx = nResults;
+	run("Measure");
+	area = getResult("Area", res_idx);
+	IJ.deleteRows(res_idx, nResults - 1);
+	run("Select None");
+	return area;
 }
