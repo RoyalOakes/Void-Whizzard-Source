@@ -53,14 +53,23 @@ macro "Isolate Paper"{
 		}
 	}
 
+	houghlistnew = getFileList(houghDir); // All files
+
+	arraylen = 0;	// Length of intsec_idxs and intsec_lens
+	if (houghlist.length == houghlistnew.length){
+		arraylen = houghlist.length / 2;
+	} else {
+		arraylen = houghlist.length;
+	}
+
 	// TODO Make sure that the arrays are not to big. (houghlist.length includes binary images.)
-	intsec_idxs = newArray(houghlist.length);	// The indices of the intersection points for each image.
-	intsec_lens = newArray(houghlist.length);	// The number of intersection points for each image.
+	intsec_idxs = newArray(arraylen);	// The indices of the intersection points for each image.
+	intsec_lens = newArray(arraylen);	// The number of intersection points for each image.
 
 	// Process the hough images. The hough images and the binary images are saved in the same directory.
 	j = 0;
-	for (i = 0; i < houghlist.length; i++){
-		if (startsWith(houghlist[i], "hough")){
+	for (i = 0; i < houghlistnew.length; i++){
+		if (startsWith(houghlistnew[i], "hough")){
 			temp_idx = processHough(houghDir + "bin" + j + ".png", houghDir + "hough" + j + ".png");
 			intsec_idxs[j] = temp_idx;
 			intsec_lens[j] = roiManager("Count") - temp_idx;
@@ -99,11 +108,12 @@ macro "Isolate Paper"{
 			run("Restore Selection");
 			run("Rotate...", "  angle=" + angle);
 			run("Crop");
+			run("Select None");
 			saveAs("Tiff", cropDir + curr_img);
 			IJ.deleteRows(res_idx, nResults - 1);
 		}
 	}
-	roiManager("Save", cropDir + "RoiSet.zip");
+	//roiManager("Save", cropDir + "RoiSet.zip");
 	setBatchMode("Exit and Display");
 	
 	stop_time = getTime();
