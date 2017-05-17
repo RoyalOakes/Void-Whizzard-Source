@@ -74,3 +74,34 @@ function drawSelectionPoints(dist){
 		print("(" + x[i] + ", " + y[i] + ")");
 	}
 }
+
+/*
+//Marks curvature minima (concave, red) and maxima(convex, green)
+macro "Vertex Angles of a 'Y' shape [4]"{
+	run("Interpolate", "interval=2 smooth adjust");
+	getSelectionCoordinates(xx, yy);
+	run("Add Selection...");
+
+	arm = 5;
+	curvature = Array.getVertexAngles(xx, yy, arm);
+	edgeMode = 2; //circular
+	tolerance = 35;
+	maxPosArr = Array.findMaxima(curvature, tolerance, edgeMode);
+	minPosArr = Array.findMinima(curvature, tolerance, edgeMode);
+	for(jj = 0; jj < maxPosArr.length; jj++){
+		x = xx[maxPosArr[jj]];
+		y = yy[maxPosArr[jj]];
+		makeOval(x-1, y-2, 2, 2);
+		run("Properties... ", "  fill=green");
+		run("Add Selection...");
+	}
+	for(jj = 0; jj < minPosArr.length; jj++){
+		x = xx[minPosArr[jj]];
+		y = yy[minPosArr[jj]];
+		makeOval(x-1, y-1, 2, 2);
+		run("Properties... ", "  fill=red");
+		run("Add Selection...");
+	}
+	run("Select None");
+}
+*/
