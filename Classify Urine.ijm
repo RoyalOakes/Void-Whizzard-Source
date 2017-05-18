@@ -11,10 +11,13 @@ macro "Classify Urine"{
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
 			open(inDir + "\\" + curr_img);
 			preprocess(curr_img);
-			setAutoThreshold("Triangle dark");
+
+			/*
+			setAutoThreshold("Mean dark");
 			setOption("BlackBackground", true);
 			run("Convert to Mask");
 			resetThreshold();
+			*/
 		}
 	}
 	setBatchMode("Exit and Display");
@@ -23,6 +26,8 @@ macro "Classify Urine"{
 function preprocess(img){
 	selectWindow(img);
 	run("Despeckle");
+	
+	//run("Enhance Contrast...", "saturated=5 normalize");
 	run("Kuwahara Filter", "sampling=5");
-	run("Subtract Background...", "rolling=50 sliding");
+	run("Subtract Background...", "rolling=110");
 }
