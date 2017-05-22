@@ -1,4 +1,72 @@
 macro "Isolate Paper"{
+	Dialog.create("User Settings");
+	Dialog.addString("Spot Size: ", "0-infinity", 12);
+	Dialog.addString("Circularity: ", "0-infinity", 12);
+	Dialog.addString("Bins: ", "0-50-100", 12);
+	Dialog.addNumber("% Offset Center: ", 50, 0, 6, "%");
+	Dialog.addNumber("% Offset Corners: ", 20, 0, 6, "%");
+	Dialog.addCheckbox("Convert", false);
+	Dialog.show();
+	
+	size = Dialog.getString();
+	dash = indexOf(size, "-");
+	//TODO: Add some more checks.
+	if (dash == -1){
+		exit("Invalid Spot Size.");
+	} else {
+		size_up = substring(size, 0, dash);
+		size_dn = substring(size, dash + 1);
+	}
+
+	circ = Dialog.getString();
+	dash = indexOf(circ, "-");
+	dasho = -1;
+	if (dash == -1){
+		exit("Invalid Circularity.");
+	} else {
+		circ_up = substring(circ, 0, dash);
+		circ_dn = substring(circ, dash + 1);
+	}
+
+	binss = Dialog.getString(); // Binss stands for 'bins string'
+	bins = newArray(50);
+	dash = indexOf(binss, "-");
+	n = 0; 
+	if (dash == -1){
+		exit("Invalid Bins.");
+	} else {
+		while (dash != -1){
+			bins[n++] = substring(binss, dasho + 1, dash);
+			dasho = dash;
+			dash = indexOf(binss, "-", dasho + 1);
+		}
+		bins[n] = substring(binss, dasho + 1);
+	}
+	bins = Array.trim(bins, n + 1);
+
+	centOff = Dialog.getNumber();
+	cornOff = Dialog.getNumber();
+	
+	convert = Dialog.getCheckbox();
+
+	// Debugging
+	print("Upper Size Limit: " + size_up);
+	print("Lower Size Limit: " + size_dn);
+
+	print("Upper Circularity Limit: " + circ_up);
+	print("Lower Circularity Limit: " + circ_dn);
+
+	print("% Offset of Center: " + centOff);
+	print("% Offset of Corners: " + cornOff);
+
+	Array.print(bins);
+
+	print("Convert pixels to Units: " + convert);
+	volu = "";	// Volume units
+	areau = "";	// Area units
+	volb = newArray(1);
+	areab = newArray(1);
+
 	start_time = getTime(); // Time how long the macro takes to execute.
 	//run("ROI Manager...");	// Open ROImanager.
 	
@@ -6,11 +74,11 @@ macro "Isolate Paper"{
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape redirect=None decimal=3");
 	
 	//Open Images
-	inDir = getDirectory("Choose a Directory");	// The directory that holds the input images.
+	inDir = getDirectory("Choose Input Directory");	// The directory that holds the input images.
 	imglist = getFileList(inDir);				// The list of files in the inDir.
-	// TODO Make sure that directories work for linux and mac. They use '/' not '\'.
-	houghDir = inDir + "\hough\\";				// The directory where the hough transforms will be saved.
-	cropDir = inDir + "\cropped\\";				// The directory where the cropped images will be saved.
+	
+	houghDir = inDir + File.separator + "hough" + File.separator;	// The directory where the hough transforms will be saved.
+	cropDir = inDir + File.separator + "cropped" + File.separator;	// The directory where the cropped images will be saved.
 	if (!File.exists(houghDir)){
 		File.makeDirectory(houghDir);
 	}
@@ -18,6 +86,18 @@ macro "Isolate Paper"{
 	if (!File.exists(cropDir)){
 		File.makeDirectory(cropDir);
 	}
+
+	// Check to see if the inDir contains the file used to convert urine spots to real units
+	convDir = inDir + File.separator + "conv.txt";
+	if (convert){
+		if (!File.exists(convDir)){
+			exit("Convert was selected but no conv.txt file was found in the in the selected directory.");
+		} 
+	}
+
+	
+
+	exit("DONE");
 
 	// Isolate the largest spot from the image.
 	for (i = 0; i < imglist.length; i++){
@@ -114,6 +194,34 @@ macro "Isolate Paper"{
 		}
 	}
 	//roiManager("Save", cropDir + "RoiSet.zip");
+
+	if (convert) {
+		convs = File.openAsString(convDir);
+		rows = split(convs, "\n");
+		if (rows.length > 3){
+			exit("Invalid convert file. Too many rows.");
+		}
+		units = split(rows[0], "\t");
+		volu = units[0];
+		areau = units[1];
+		volb = split(rows[1], "\t");
+		areab = split(rows[2], "\t");
+		if (volb.length != areab.length){
+			exit("Volume-Area dimension mismatch.");
+		}
+
+		for (i = 0; i < volb.length; i++){
+			volb[i] = parseFloat(volb[i]);
+			areab[i] = parseFloat(areab[i]);
+		}
+
+		Fit.doFit("Straight Line", areab, volb); // Form: y = a + bx;
+		a = Fit.p(0);
+		b = Fit.p(1);
+	}
+
+	//TODO Analysis goes here.
+	
 	setBatchMode("Exit and Display");
 	
 	stop_time = getTime();
