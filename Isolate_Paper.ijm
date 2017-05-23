@@ -95,10 +95,6 @@ macro "Isolate Paper"{
 		} 
 	}
 
-	
-
-	exit("DONE");
-
 	// Isolate the largest spot from the image.
 	for (i = 0; i < imglist.length; i++){
 		curr_img = imglist[i];

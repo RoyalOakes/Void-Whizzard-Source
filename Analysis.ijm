@@ -4,19 +4,64 @@
 macro "Analyze_Spots"{
 	img = getTitle();
 
-	centOff = 50;
-	cornOff = 25;
+	centOff = 30;
+	cornOff = 5;
 
-	centOff *= 0.01;
-	cent_idx = roiManager("Count");
+	cent_idx = initCenter(img, centOff);
+	corn_idx = initCorners(img, cornOff);
+
+	ell_idx = roiManager("Count");
+	run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
+	ell_num = roiManager("Count") - ell_idx;
+	sels = roiSelect(ell_idx, roiManager("Count"));
+	roiManager("Select", sels);
+	roiManager("Measure");
+
+	IJ.renameResults("Results", "Ellipses");
+
+	getEllipsesCenter(cent_idx, ell_idx, ell_num);
+}
+
+function getEllipsesCenter(c_idx, e_idx, e_num){
+	ce_idx = roiManager("Count");	// Index of the first center (c) ellipse (e).
+	for (i = 0; i < e_num; i++){
+		arr = newArray(c_idx, e_idx + i);
+		roiManager("Select", arr);
+		roiManager("AND");
+		if (selectionType() != -1){
+			roiManager("Add");
+		}
+	}
+	selc = roiSelect(ce_idx, roiManager("Count"));
+	roiManager("Select", selc);
+	roiManager("Measure");
+}
+
+/*
+ * Draws a box that encloses a percentage of the area in the center of an image 
+ * given by an offset. 
+ */
+function initCenter(img, offset){
+	offset = sqrt(offset * 0.01);
+	idx = roiManager("Count");
 	run("Select All");
-	run("Scale... ", "x=" + centOff + " y=" + centOff + " centered");
+	run("Scale... ", "x=" + offset + " y=" + offset + " centered");
 	roiManager("Add");
+	return idx;
+}
 
-	cornOff *= 0.01;
-	cornWidth = cornOff * getWidth();
-	cornHeight = cornOff * getHeight();
-	corn_idx = roiManager("Count");
+/*
+ * Draws four bxes that each contain a percentage of the area of an image given
+ * by an offset. Each box contains the percentage of the area given by offset.
+ */
+function initCorners(img, offset){
+	selectWindow(img);
+	
+	offset = sqrt(offset * 0.01);
+	cornWidth = offset * getWidth();
+	cornHeight = offset * getHeight();
+	idx = roiManager("Count");
+	
 	makeRectangle(0, 0, cornWidth, cornHeight);
 	roiManager("Add");
 	makeRectangle(0, getHeight() - cornHeight, cornWidth, cornHeight);
@@ -25,19 +70,15 @@ macro "Analyze_Spots"{
 	roiManager("Add");
 	makeRectangle(getWidth() - cornWidth, getHeight() - cornHeight, cornWidth, cornHeight);
 	roiManager("Add");
-	sels = roiSelect(corn_idx, corn_idx + 4);
+	
+	sels = roiSelect(idx, idx + 4);
 	roiManager("Select", sels);
 	roiManager("Combine");
 	roiManager("Add");
 	roiManager("Select", sels);
 	roiManager("Delete");
-
-	ell_idx = roiManager("Count");
-	run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
-	sels = roiSelect(ell_idx, roiManager("Count"));
-	roiManager("Select", sels);
-	roiManager("Measure");
-
+	
+	return idx;
 }
 
 /*
