@@ -2,10 +2,16 @@ macro "Isolate Paper"{
 	Dialog.create("User Settings");
 	Dialog.addString("Spot Size: ", "0-infinity", 12);
 	Dialog.addString("Circularity: ", "0-infinity", 12);
-	Dialog.addString("Bins: ", "0-50-100", 12);
-	Dialog.addNumber("% Offset Center: ", 50, 0, 6, "%");
-	Dialog.addNumber("% Offset Corners: ", 20, 0, 6, "%");
-	Dialog.addCheckbox("Convert", false);
+	Dialog.addString("Bins: ", "0-0.2-0.5-1", 12);
+	Dialog.addNumber("% Offset Center: ", 30, 0, 6, "%");
+	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
+	Dialog.addCheckbox("Convert area to volume", true);
+	Dialog.addCheckbox("Convert pixels to units", true);
+	Dialog.addMessage("If \"Convert pixel to units\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
+	Dialog.addNumber("Width: ", 10.875, 3, 12, "");
+	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
+	Dialog.addString("Units: ", "inch", 12);
+	
 	Dialog.show();
 	
 	size = Dialog.getString();
@@ -14,8 +20,8 @@ macro "Isolate Paper"{
 	if (dash == -1){
 		exit("Invalid Spot Size.");
 	} else {
-		size_up = substring(size, 0, dash);
-		size_dn = substring(size, dash + 1);
+		size_d = substring(size, 0, dash);
+		size_u = substring(size, dash + 1);
 	}
 
 	circ = Dialog.getString();
@@ -24,8 +30,8 @@ macro "Isolate Paper"{
 	if (dash == -1){
 		exit("Invalid Circularity.");
 	} else {
-		circ_up = substring(circ, 0, dash);
-		circ_dn = substring(circ, dash + 1);
+		circ_d = substring(circ, 0, dash);
+		circ_u = substring(circ, dash + 1);
 	}
 
 	binss = Dialog.getString(); // Binss stands for 'bins string'
@@ -47,21 +53,26 @@ macro "Isolate Paper"{
 	centOff = Dialog.getNumber();
 	cornOff = Dialog.getNumber();
 	
-	convert = Dialog.getCheckbox();
+	convertVolume = Dialog.getCheckbox();	// Convert the area to volume
+	convertArea = Dialog.getCheckbox();		// Convert the area in pixels to area in real units.
+
+	paperWidth  = Dialog.getNumber();
+	paperHeight = Dialog.getNumber();
+	paperUnits  = Dialog.getString();
 
 	// Debugging
-	print("Upper Size Limit: " + size_up);
-	print("Lower Size Limit: " + size_dn);
+	print("Upper Size Limit: " + size_u);
+	print("Lower Size Limit: " + size_d);
 
-	print("Upper Circularity Limit: " + circ_up);
-	print("Lower Circularity Limit: " + circ_dn);
+	print("Upper Circularity Limit: " + circ_u);
+	print("Lower Circularity Limit: " + circ_d);
 
 	print("% Offset of Center: " + centOff);
 	print("% Offset of Corners: " + cornOff);
 
 	Array.print(bins);
 
-	print("Convert pixels to Units: " + convert);
+	print("Convert pixels to Units: " + convertVolume);
 	volu = "";	// Volume units
 	areau = "";	// Area units
 	volb = newArray(1);
@@ -71,7 +82,7 @@ macro "Isolate Paper"{
 	//run("ROI Manager...");	// Open ROImanager.
 	
 	setBatchMode(true);
-	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape redirect=None decimal=3");
+	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
 	
 	//Open Images
 	inDir = getDirectory("Choose Input Directory");	// The directory that holds the input images.
@@ -79,6 +90,7 @@ macro "Isolate Paper"{
 	
 	houghDir = inDir + File.separator + "hough" + File.separator;	// The directory where the hough transforms will be saved.
 	cropDir = inDir + File.separator + "cropped" + File.separator;	// The directory where the cropped images will be saved.
+	binDir = inDir + File.separator + "binary" + File.separator;
 	if (!File.exists(houghDir)){
 		File.makeDirectory(houghDir);
 	}
@@ -87,9 +99,13 @@ macro "Isolate Paper"{
 		File.makeDirectory(cropDir);
 	}
 
+	if (!File.exists(binDir)){
+		File.makeDirectory(binDir);
+	}
+
 	// Check to see if the inDir contains the file used to convert urine spots to real units
 	convDir = inDir + File.separator + "conv.txt";
-	if (convert){
+	if (convertVolume){
 		if (!File.exists(convDir)){
 			exit("Convert was selected but no conv.txt file was found in the in the selected directory.");
 		} 
@@ -99,7 +115,7 @@ macro "Isolate Paper"{
 	for (i = 0; i < imglist.length; i++){
 		curr_img = imglist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-			open(inDir + "\\" + curr_img);
+			open(inDir + File.separator + curr_img);
 			preprocess(curr_img);
 			isolateLargestSpot(curr_img);
 			run("Select None");
@@ -158,18 +174,18 @@ macro "Isolate Paper"{
 	for (i = 0; i < imglist.length; i++){
 		curr_img = imglist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-			open(inDir + "\\" + curr_img);
+			open(inDir + File.separator + curr_img);
 			pts = Array.getSequence(intsec_lens[i]);
 			for (j = 0; j < pts.length; j++){
 				pts[j] += intsec_idxs[i];
 			}
 
-			a = newArray(1);
-			a = getCorners(getTitle(), pts);
+			arr = newArray(1);
+			arr = getCorners(getTitle(), pts);
 			
-			Array.print(a);
+			Array.print(arr);
 			print("---");
-			roiManager("Select", a);
+			roiManager("Select", arr);
 			roiManager("Combine");
 			run("Convex Hull");
 
@@ -186,12 +202,28 @@ macro "Isolate Paper"{
 			run("Crop");
 			run("Select None");
 			saveAs("Tiff", cropDir + curr_img);
+			run("Close");
 			IJ.deleteRows(res_idx, nResults - 1);
 		}
 	}
 	//roiManager("Save", cropDir + "RoiSet.zip");
 
-	if (convert) {
+	croplist = getFileList(cropDir);
+	for (i = 0; i < croplist.length; i++){
+		curr_img = croplist[i];
+		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
+			open(cropDir + curr_img);
+			process(croplist[i]);
+			saveAs("Tiff", binDir + curr_img);
+			run("Close");
+		}
+	}
+
+	a = 0;
+	b = 0;
+	
+	convDir = inDir + File.separator + "conv.txt";
+	if (convertVolume) {
 		convs = File.openAsString(convDir);
 		rows = split(convs, "\n");
 		if (rows.length > 3){
@@ -206,6 +238,9 @@ macro "Isolate Paper"{
 			exit("Volume-Area dimension mismatch.");
 		}
 
+		volb = Array.concat(0, volb);
+		areab = Array.concat(0, areab);
+
 		for (i = 0; i < volb.length; i++){
 			volb[i] = parseFloat(volb[i]);
 			areab[i] = parseFloat(areab[i]);
@@ -214,15 +249,335 @@ macro "Isolate Paper"{
 		Fit.doFit("Straight Line", areab, volb); // Form: y = a + bx;
 		a = Fit.p(0);
 		b = Fit.p(1);
+		//print(a + ", " + b);
 	}
 
-	//TODO Analysis goes here.
+	binlist = getFileList(binDir);
+
+	initAnalysisTable("Summary");
+	//initAnalysisTable("RAW");
+	for (i = 0; i < binlist.length; i++){
+		curr_img = binlist[i];
+		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
+			open(binDir + File.separator + curr_img);
+			analyzeSpots(curr_img, convertArea, paperWidth, paperHeight, paperUnits);
+			
+			size_u = parseFloat(size_u);
+			if (isNaN(size_u)){
+				size_u = 1000000000;
+			}
+			size_d = parseFloat(size_d);
+			if (isNaN(size_d)){
+				size_d = 0;
+			}
+
+			circ_u = parseFloat(size_u);
+			if (isNaN(circ_u)){
+				circ_u = 1000000000;
+			}
+			circ_d = parseFloat(size_d);
+			if (isNaN(circ_d)){
+				circ_d = 0;
+			}
+
+			// Measure ellipses in the entire energy
+			totArea = 0;
+			totVolume = 0;
+			totCount = 0;
+			totBins = newArray(bins.length);
+
+			IJ.renameResults("Ellipses", "Results");
+			num = nResults;
+			for (j = 0; j < num; j++){
+				currArea = getResult("Area", j);
+				currCirc = getResult("Circ.", j);
+				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+					totArea += currArea;
+					totCount++;
+					if (convertVolume){
+						totVolume += (a + (currArea * b));
+					}
+				}
+			}
+
+			for (j = 0; j < totBins.length; j++){
+				for (k = 0; k < num; k++){
+					currArea = getResult("Area", k);
+					currCirc = getResult("Circ.", k);
+					if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+						if (j < (totBins.length - 1)){
+							if (currArea > bins[j] && currArea < bins[j+1]){
+								totBins[j] += 1;
+							}
+						} else {
+							if (currArea > bins[j]){
+								totBins[j] += 1;
+							}
+						}
+					}
+				}
+			}
+			
+			IJ.renameResults("Results", "Ellipses");
+
+			// Measure ellipses in center.
+			areaCenter = 0;
+			
+			IJ.renameResults("Center Ellipses", "Results");
+			
+			num = nResults;
+			for (j = 0; j < num; j++){
+				currArea = getResult("Area", j);
+				currCirc = getResult("Circ.", j);
+				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+					areaCenter += currArea;
+				}
+			}
+			IJ.renameResults("Results", "Center Ellipses");
+
+			// Measure ellipses in corners.
+			areaCorners = 0;
+			
+			IJ.renameResults("Corner Ellipses", "Results");
+			
+			num = nResults;
+			for (j = 0; j < num; j++){
+				currArea = getResult("Area", j);
+				currCirc = getResult("Circ.", j);
+				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+					areaCorners += currArea;
+				}
+			}
+			IJ.renameResults("Results", "Corner Ellipses");
+			
+			// Print Results to Summary Table.
+			IJ.renameResults("Analysis Summary Results", "Results");
+
+			label = getTitle();
+			setResult("Label", i, label);
+			setResult("Count", i, totCount);	
+			setResult("Total Area (" + paperUnits + "^2)", i, totArea);
+			if (convertVolume){
+				setResult("Total Volume (" + volu + ")", i, totVolume);
+			}
+			setResult("Percent area in center", i, (areaCenter / totArea) * 100);
+			setResult("Percent area in corners", i, (areaCorners / totArea) * 100);
+
+			for (j = 0; j < totBins.length - 1; j++){
+				setResult(bins[j] + "--" + bins[j+1] + " " + paperUnits, i, totBins[j]);
+			}
+			setResult(bins[bins.length-1] + "+ " + paperUnits, i, totBins[totBins.length-1]);
+		
+			IJ.renameResults("Results", "Analysis Summary Results");
+
+			// Cleanup: Close windows.
+			if (roiManager("Count") > 0){
+				sel = roiSelect(0, roiManager("Count"));
+				roiManager("Select", sel);
+				roiManager("Delete");
+			}
+			
+			selectWindow("Ellipses");
+			selectWindow("Ellipses");
+			wait(500);
+			run("Close");
+			selectWindow("Center Ellipses");
+			selectWindow("Center Ellipses");
+			wait(500);
+			run("Close");
+			selectWindow("Corner Ellipses");
+			selectWindow("Corner Ellipses");
+			wait(500);
+			run("Close");
+		}
+	}
+
+	saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
 	
 	setBatchMode("Exit and Display");
 	
 	stop_time = getTime();
 	print("Time: " + (stop_time - start_time) / 1000); // Print how long it took to execute the macro.
 	print("---------------------------------------------");
+}
+
+/*
+ * Converts a cropped image to a binary image.
+ */
+function process(img){
+	selectWindow(img);
+	run("Despeckle");
+	run("Kuwahara Filter", "sampling=5");
+	run("Median...", "radius=1");
+	//run("Enhance Contrast...", "saturated=0.5 normalize");
+
+	getHistogram(values, counts, 256);
+	noise = 15000;
+	do {
+		max  = Array.findMaxima(counts, noise);
+		noise -= 1000;
+	} while(max.length == 0);
+	mins = Array.findMinima(counts, 25);
+	max = Array.sort(max);
+	max = Array.reverse(max);
+	mins = Array.sort(mins);
+
+	threshold = 0;
+
+	print("Max: " + values[max[0]]);
+
+	for (i = 0; i < mins.length; i++){
+		if (values[mins[i]] > values[max[0]]){
+			print("Threshold: " + values[mins[i]]);
+			setThreshold(values[mins[i]], 65535);
+			run("Convert to Mask");
+			return;
+		}
+	}
+}
+
+function analyzeSpots(img, convA, pWidth, pHeight, pUnits){
+	cent_idx = initCenter(img, centOff);
+	corn_idx = initCorners(img, cornOff);
+
+	if (convA){
+		setScale(img, pWidth, pHeight, pUnits);
+	}
+
+	ell_idx = roiManager("Count");
+	ell_num = getEllipses(ell_idx);
+	getEllipsesSelection("Center Ellipses", cent_idx, ell_idx, ell_num);
+	getEllipsesSelection("Corner Ellipses", corn_idx, ell_idx, ell_num);
+}
+
+function setScale(img, pwidth, pheight, punits){
+	selectWindow(img);
+	width = getWidth();
+	height = getHeight();
+	if (width > height){
+		if (pwidth > pheight){
+			run("Set Scale...", "distance=" + width + " known=" + pwidth + " pixel=1 unit=" + punits);
+		} else {
+			run("Set Scale...", "distance=" + width + " known=" + pheight + " pixel=1 unit=" + punits);
+		}
+	} else {
+		if (pwidth > pheight){
+			run("Set Scale...", "distance=" + height + " known=" + pwidth + " pixel=1 unit=" + punits);
+		} else {
+			run("Set Scale...", "distance=" + height + " known=" + pheight + " pixel=1 unit=" + punits);
+		}
+	}
+}
+
+function initAnalysisTable(str){
+	if (isOpen("Analysis " + str + " Results")){
+		return;
+	}
+
+	newImage("temp", "8-bit black", 699, 430, 1);
+	
+	run("Set Measurements...", "  redirect=None decimal=4");
+	if (isOpen("Results")){
+		IJ.renameResults("Results", "temp");
+		run("Set Measurements...", "  redirect=None decimal=4");
+		run("Measure");
+		run("Clear Results");
+		IJ.renameResults("Results", "Analysis " + str + " Results");
+		IJ.renameResults("temp", "Results");
+	} else {
+		run("Measure");
+		run("Clear Results");
+		IJ.renameResults("Results", "Analysis " + str + " Results");
+	}
+	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
+	selectWindow("temp");
+	run("Close");
+}
+
+function getEllipses(e_idx){
+	run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
+	sels = roiSelect(e_idx, roiManager("Count"));
+	roiManager("Select", sels);
+	roiManager("Measure");
+
+	for (i = 0; i < sels.length; i++){
+		roiManager("Select", i + e_idx);
+		run("Add Selection...");
+	}
+
+	IJ.renameResults("Results", "Ellipses");
+
+	return roiManager("Count") - e_idx;
+}
+
+function getEllipsesSelection(title, c_idx, e_idx, e_num){
+	ce_idx = roiManager("Count");
+	for (i = 0; i < e_num; i++){
+		arr = newArray(c_idx, e_idx + i);
+		roiManager("Select", arr);
+		roiManager("AND");
+		if (selectionType() != -1){
+			roiManager("Add");
+		}
+	}
+	selc = roiSelect(ce_idx, roiManager("Count"));
+	if (selc[0] < roiManager("Count")){
+		roiManager("Select", selc);
+		roiManager("Measure");
+
+		roiManager("Select", selc);
+		roiManager("Delete");
+
+		IJ.renameResults("Results", title);
+	} else {
+		run("Measure");
+		run("Clear Results");
+		IJ.renameResults("Results", title);
+	}
+}
+
+/*
+ * Draws a box that encloses a percentage of the area in the center of an image 
+ * given by an offset. 
+ */
+function initCenter(img, offset){
+	offset = sqrt(offset * 0.01);
+	idx = roiManager("Count");
+	run("Select All");
+	run("Scale... ", "x=" + offset + " y=" + offset + " centered");
+	roiManager("Add");
+	return idx;
+}
+
+/*
+ * Draws four bxes that each contain a percentage of the area of an image given
+ * by an offset. Each box contains the percentage of the area given by offset.
+ */
+function initCorners(img, offset){
+	selectWindow(img);
+	
+	offset = sqrt(offset * 0.01);
+	cornWidth = round(offset * getWidth());
+	cornHeight = round(offset * getHeight());
+	idx = roiManager("Count");
+	
+	makeRectangle(0, 0, cornWidth, cornHeight);
+	roiManager("Add");
+	makeRectangle(0, getHeight() - cornHeight, cornWidth, cornHeight);
+	roiManager("Add");
+	makeRectangle(getWidth() - cornWidth, 0, cornWidth, cornHeight);
+	roiManager("Add");
+	makeRectangle(getWidth() - cornWidth, getHeight() - cornHeight, cornWidth, cornHeight);
+	roiManager("Add");
+	
+	sels = roiSelect(idx, idx + 4);
+	roiManager("Select", sels);
+	roiManager("Combine");
+	roiManager("Add");
+	roiManager("Select", sels);
+	roiManager("Delete");
+	
+	return idx;
 }
 
 /*
@@ -242,6 +597,8 @@ function preprocess(img){
 	run("Convert to Mask");
 	resetThreshold();
 }
+
+
 
 /*
  * This function accepts the path to a hough transform of an image, and returns the intersections
@@ -606,6 +963,11 @@ function hullBestFitBox(hull_idx, line_idx, line_num){
  * Returns an array containing the indices of the roi's in the roimanager to be selected.
  */
 function roiSelect(start, end){
+	if (start == end){
+		tempArr = newArray(1);
+		tempArr[0] = start;
+		return tempArr;
+	}
 	sels = Array.getSequence(end - start);
 	for (i = 0; i < sels.length; i++){
 		sels[i] += start;
