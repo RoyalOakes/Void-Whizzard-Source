@@ -6,11 +6,10 @@ macro "Isolate Paper"{
 	Dialog.addNumber("% Offset Center: ", 30, 0, 6, "%");
 	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
 	Dialog.addCheckbox("Convert area to volume", true);
-	Dialog.addCheckbox("Convert pixels to units", true);
-	Dialog.addMessage("If \"Convert pixel to units\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
+	Dialog.addMessage("If \"Convert area to volume\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
 	Dialog.addNumber("Width: ", 10.875, 3, 12, "");
 	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
-	Dialog.addString("Units: ", "inch", 12);
+	//Dialog.addString("Units: ", "inch", 12);
 	
 	Dialog.show();
 	
@@ -54,7 +53,6 @@ macro "Isolate Paper"{
 	cornOff = Dialog.getNumber();
 	
 	convertVolume = Dialog.getCheckbox();	// Convert the area to volume
-	convertArea = Dialog.getCheckbox();		// Convert the area in pixels to area in real units.
 
 	paperWidth  = Dialog.getNumber();
 	paperHeight = Dialog.getNumber();
@@ -229,9 +227,9 @@ macro "Isolate Paper"{
 		if (rows.length > 3){
 			exit("Invalid convert file. Too many rows.");
 		}
-		units = split(rows[0], "\t");
+		//units = split(rows[0], "\t");
 		volu = units[0];
-		areau = units[1];
+		//areau = units[1];
 		volb = split(rows[1], "\t");
 		areab = split(rows[2], "\t");
 		if (volb.length != areab.length){
@@ -260,7 +258,7 @@ macro "Isolate Paper"{
 		curr_img = binlist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
 			open(binDir + File.separator + curr_img);
-			analyzeSpots(curr_img, convertArea, paperWidth, paperHeight, paperUnits);
+			analyzeSpots(curr_img, convertVolume, paperWidth, paperHeight, paperUnits);
 			
 			size_u = parseFloat(size_u);
 			if (isNaN(size_u)){
@@ -364,7 +362,7 @@ macro "Isolate Paper"{
 			setResult("Percent area in corners", i, (areaCorners / totArea) * 100);
 
 			for (j = 0; j < totBins.length - 1; j++){
-				setResult(bins[j] + "--" + bins[j+1] + " " + paperUnits, i, totBins[j]);
+				setResult(bins[j] + "--" + bins[j+1] + " " + paperUnits + "^2)", i, totBins[j]);
 			}
 			setResult(bins[bins.length-1] + "+ " + paperUnits, i, totBins[totBins.length-1]);
 		
