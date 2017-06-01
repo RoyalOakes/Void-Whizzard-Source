@@ -409,6 +409,7 @@ function process(img){
 	run("Despeckle");
 	run("Kuwahara Filter", "sampling=5");
 	run("Median...", "radius=1");
+	//run("Gamma...", "value=1.70");
 	//run("Enhance Contrast...", "saturated=0.5 normalize");
 
 	getHistogram(values, counts, 256);
@@ -417,7 +418,7 @@ function process(img){
 
 	greaterMaxima = newArray(50);
 	n = 0;
-	threshold = mean + (stdDev * 0.8)
+	threshold = mean + (stdDev * 0.8);
 	for (i = 0; i < maxima.length; i++){
 		if (counts[maxima[i]] > threshold){
 			greaterMaxima[i] = maxima[i];
@@ -439,6 +440,7 @@ function process(img){
 			print("Threshold: " + values[mins[i]]);
 			setThreshold(values[mins[i]], 65535);
 			run("Convert to Mask");
+			run("Fill Holes");
 			return;
 		}
 	}
