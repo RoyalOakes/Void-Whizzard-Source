@@ -355,7 +355,7 @@ macro "Isolate Paper"{
 
 			label = getTitle();
 			setResult("Label", i, label);
-			setResult("Count", i, totCount);	
+			setResult("Count", i, totCount);
 			setResult("Total Area (" + paperUnits + "^2)", i, totArea);
 			if (convertVolume){
 				setResult("Total Volume (" + volu + ")", i, totVolume);
@@ -412,22 +412,30 @@ function process(img){
 	//run("Enhance Contrast...", "saturated=0.5 normalize");
 
 	getHistogram(values, counts, 256);
-	noise = 15000;
-	do {
-		max  = Array.findMaxima(counts, noise);
-		noise -= 1000;
-	} while(max.length == 0);
+	Array.getStatistics(counts, min, max, mean, stdDev);
+	maxima = Array.findMaxima(counts, 200, 1);
+
+	greaterMaxima = newArray(50);
+	n = 0;
+	threshold = mean + (stdDev * 0.8)
+	for (i = 0; i < maxima.length; i++){
+		if (counts[maxima[i]] > threshold){
+			greaterMaxima[i] = maxima[i];
+			n++;
+		}
+	}
+
+	greaterMaxima = Array.trim(greaterMaxima, n);
+	greaterMaxima = Array.sort(greaterMaxima);
+	greaterMaxima = Array.reverse(greaterMaxima);
+	
 	mins = Array.findMinima(counts, 25);
-	max = Array.sort(max);
-	max = Array.reverse(max);
 	mins = Array.sort(mins);
 
-	threshold = 0;
-
-	print("Max: " + values[max[0]]);
+	print("Max: " + values[greaterMaxima[0]]);
 
 	for (i = 0; i < mins.length; i++){
-		if (values[mins[i]] > values[max[0]]){
+		if (values[mins[i]] > values[greaterMaxima[0]]){
 			print("Threshold: " + values[mins[i]]);
 			setThreshold(values[mins[i]], 65535);
 			run("Convert to Mask");
