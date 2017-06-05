@@ -1,7 +1,7 @@
-macro "Isolate Paper"{
+macro "Void Whizzard"{
 	Dialog.create("User Settings");
 	Dialog.addString("Spot Size: ", "0-infinity", 12);
-	Dialog.addString("Circularity: ", "0-infinity", 12);
+	Dialog.addString("Circularity: ", "0-1", 12);
 	Dialog.addString("Bins: ", "0-0.2-0.5-1", 12);
 	Dialog.addNumber("% Offset Center: ", 30, 0, 6, "%");
 	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
@@ -9,7 +9,10 @@ macro "Isolate Paper"{
 	Dialog.addMessage("If \"Convert area to volume\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
 	Dialog.addNumber("Width: ", 10.875, 3, 12, "");
 	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
-	//Dialog.addString("Units: ", "inch", 12);
+	Dialog.addString("Area Units: ", "inch", 12);
+	Dialog.addString("Volume Units: ", "uL", 12);
+	Dialog.addCheckbox("Save ellipses", true);
+	Dialog.addCheckbox("Verbose", false);
 	
 	Dialog.show();
 	
@@ -57,20 +60,26 @@ macro "Isolate Paper"{
 	paperWidth  = Dialog.getNumber();
 	paperHeight = Dialog.getNumber();
 	paperUnits  = Dialog.getString();
+	paperUnitsV = Dialog.getString();
+
+	saveEllipses = Dialog.getCheckbox();
+	verbose = Dialog.getCheckbox();
 
 	// Debugging
-	print("Upper Size Limit: " + size_u);
-	print("Lower Size Limit: " + size_d);
+	if (verbose){
+		print("Upper Size Limit: " + size_u);
+		print("Lower Size Limit: " + size_d);
+	
+		print("Upper Circularity Limit: " + circ_u);
+		print("Lower Circularity Limit: " + circ_d);
 
-	print("Upper Circularity Limit: " + circ_u);
-	print("Lower Circularity Limit: " + circ_d);
+		print("% Offset of Center: " + centOff);
+		print("% Offset of Corners: " + cornOff);
 
-	print("% Offset of Center: " + centOff);
-	print("% Offset of Corners: " + cornOff);
+		Array.print(bins);
 
-	Array.print(bins);
-
-	print("Convert pixels to Units: " + convertVolume);
+		print("Convert pixels to Units: " + convertVolume);
+	}
 	volu = "";	// Volume units
 	areau = "";	// Area units
 	volb = newArray(1);
@@ -163,8 +172,10 @@ macro "Isolate Paper"{
 			temp_idx = processHough(houghDir + "bin" + j + ".png", houghDir + "hough" + j + ".png");
 			intsec_idxs[j] = temp_idx;
 			intsec_lens[j] = roiManager("Count") - temp_idx;
-			print("bin" + j + " Index: " + intsec_idxs[j]);	 // Debugging
-			print("bin" + j + " Length: " + intsec_lens[j]); // Debugging
+			if (verbose){
+				print("bin" + j + " Index: " + intsec_idxs[j]);	 // Debugging
+				print("bin" + j + " Length: " + intsec_lens[j]); // Debugging
+			}
 			j++;
 		}
 	}
@@ -180,9 +191,10 @@ macro "Isolate Paper"{
 
 			arr = newArray(1);
 			arr = getCorners(getTitle(), pts);
-			
-			Array.print(arr);
-			print("---");
+			if (verbose){
+				Array.print(arr);
+				print("---");
+			}
 			roiManager("Select", arr);
 			roiManager("Combine");
 			run("Convex Hull");
@@ -227,11 +239,8 @@ macro "Isolate Paper"{
 		if (rows.length > 3){
 			exit("Invalid convert file. Too many rows.");
 		}
-		//units = split(rows[0], "\t");
-		volu = units[0];
-		//areau = units[1];
-		volb = split(rows[1], "\t");
-		areab = split(rows[2], "\t");
+		volb = split(rows[0], "\t");
+		areab = split(rows[1], "\t");
 		if (volb.length != areab.length){
 			exit("Volume-Area dimension mismatch.");
 		}
@@ -271,7 +280,7 @@ macro "Isolate Paper"{
 
 			circ_u = parseFloat(size_u);
 			if (isNaN(circ_u)){
-				circ_u = 1000000000;
+				circ_u = 1;
 			}
 			circ_d = parseFloat(size_d);
 			if (isNaN(circ_d)){
@@ -356,7 +365,7 @@ macro "Isolate Paper"{
 			setResult("Count", i, totCount);
 			setResult("Total Area (" + paperUnits + "^2)", i, totArea);
 			if (convertVolume){
-				setResult("Total Volume (" + volu + ")", i, totVolume);
+				setResult("Total Volume (" + paperUnitsV + ")", i, totVolume);
 			}
 			setResult("Percent area in center", i, (areaCenter / totArea) * 100);
 			setResult("Percent area in corners", i, (areaCorners / totArea) * 100);
@@ -391,12 +400,16 @@ macro "Isolate Paper"{
 	}
 
 	saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
+
+	waitForUser("Void Whizzard", "The Void Whizzard has finished executing.");
 	
 	setBatchMode("Exit and Display");
 	
 	stop_time = getTime();
-	print("Time: " + (stop_time - start_time) / 1000); // Print how long it took to execute the macro.
-	print("---------------------------------------------");
+	if (verbose){
+		print("Time: " + (stop_time - start_time) / 1000); // Print how long it took to execute the macro.
+		print("---------------------------------------------");
+	}
 }
 
 /*
@@ -430,12 +443,16 @@ function process(img){
 	
 	mins = Array.findMinima(counts, 25);
 	mins = Array.sort(mins);
-
-	print("Max: " + values[greaterMaxima[0]]);
+	
+	if (verbose){
+		print("Max: " + values[greaterMaxima[0]]);
+	}
 
 	for (i = 0; i < mins.length; i++){
 		if (values[mins[i]] > values[greaterMaxima[0]]){
-			print("Threshold: " + values[mins[i]]);
+			if (verbose){
+				print("Threshold: " + values[mins[i]]);
+			}
 			setThreshold(values[mins[i]], 65535);
 			run("Convert to Mask");
 			run("Fill Holes");
@@ -794,16 +811,22 @@ function findIntersection(x1, y1, x2, y2, x3, y3, x4, y4){
  * Returns an array containg the positions of false corners in the given array of points.
  */
 function getCorners(img, points){
-	print("Fitting " + img + "[" + points.length + "]");
+	if (verbose){
+		print("Fitting " + img + "[" + points.length + "]");
+	}
 	if (points.length <= 4){
-		print("No removal\n---");
+		if (verbose){
+			print("No removal\n---");
+		}
 		return points;
 	}
 	
 	hs_o = getHullSolidity(img, points);	// The original hull solidity.
 	hs_c = 0;						// The hull solidity of the current set of points.
 
-	print("Original: " + hs_o);
+	if (verbose){
+		print("Original: " + hs_o);
+	}
 
 	// The number of combinations of 4 unique points from points array =
 	// factorial(points.length) / (factorial(4) * factorial(points.length - 4));
@@ -831,8 +854,10 @@ function getCorners(img, points){
 			}
 		}
 	}
-
-	print("Max: " + max);
+	
+	if (verbose){
+		print("Max: " + max);
+	}
 	
 	arr = newArray(points[imax], points[jmax], points[kmax], points[lmax]);
 	return arr;
