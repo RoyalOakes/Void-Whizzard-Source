@@ -11,7 +11,6 @@ macro "Void Whizzard"{
 	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
 	Dialog.addString("Area Units: ", "inch", 12);
 	Dialog.addString("Volume Units: ", "uL", 12);
-	Dialog.addCheckbox("Save ellipses", true);
 	Dialog.addCheckbox("Verbose", false);
 	
 	Dialog.show();
@@ -62,7 +61,6 @@ macro "Void Whizzard"{
 	paperUnits  = Dialog.getString();
 	paperUnitsV = Dialog.getString();
 
-	saveEllipses = Dialog.getCheckbox();
 	verbose = Dialog.getCheckbox();
 
 	// Debugging
@@ -223,6 +221,7 @@ macro "Void Whizzard"{
 		curr_img = croplist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
 			open(cropDir + curr_img);
+			run("16-bit");
 			process(croplist[i]);
 			saveAs("Tiff", binDir + curr_img);
 			run("Close");
@@ -383,7 +382,8 @@ macro "Void Whizzard"{
 				roiManager("Select", sel);
 				roiManager("Delete");
 			}
-			
+
+			// The duplicate commands are necessary, otherwise the wrong window may be closed.
 			selectWindow("Ellipses");
 			selectWindow("Ellipses");
 			wait(500);
