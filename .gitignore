@@ -3,6 +3,7 @@
 *.tif
 *.zip
 *~
+*.jar
 !Problem_img/bin13.png
 !Problem_img/Bin13Filled.png
 !Problem_img/problem.TIF
