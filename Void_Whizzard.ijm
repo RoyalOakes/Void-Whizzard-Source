@@ -100,9 +100,9 @@ macro "Void Whizzard"{
 	imglist = getFileList(inDir);				// The list of files in the inDir.
 
 	if (!precropped){
-		houghDir = inDir + File.separator + "hough" + File.separator;	// The directory where the hough transforms will be saved.
-		cropDir = inDir + File.separator + "cropped" + File.separator;	// The directory where the cropped images will be saved.
-		binDir = inDir + File.separator + "binary" + File.separator;
+		houghDir = inDir + "hough" + File.separator;	// The directory where the hough transforms will be saved.
+		cropDir = inDir + "cropped" + File.separator;	// The directory where the cropped images will be saved.
+		binDir = inDir + "binary" + File.separator;
 		if (!File.exists(houghDir)){
 			File.makeDirectory(houghDir);
 		}
@@ -126,6 +126,7 @@ macro "Void Whizzard"{
 		showProgress(0);
 
 		// Isolate the largest spot from the image.
+		j = 0;
 		for (i = 0; i < imglist.length; i++){
 			curr_img = imglist[i];
 			if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
@@ -137,9 +138,10 @@ macro "Void Whizzard"{
 				run("Outline");
 				run("Options...", "iterations=2 count=1 black do=Dilate");
 				run("Select None"); // TODO Can This be removed?
-				saveAs("PNG", houghDir + "bin" + i + ".png");
-				selectWindow("bin" + i + ".png");
+				saveAs("PNG", houghDir + "bin" + j + ".png");
+				selectWindow("bin" + j + ".png");
 				run("Close");
+				j++;
 			}
 		}
 
@@ -158,6 +160,10 @@ macro "Void Whizzard"{
 				out = houghDir + "hough" + num + ".png";
 				//print(houghlist[i] + " -> hough" + num); // Debugging	
 				call("HoughTransform.main", in, out, thetaAxisSize, radiusAxisSize, minContrast);
+				if (isOpen("Console")){
+					selectWindow("Console");
+					run("Close");
+				}
 			}
 		}
 	
@@ -195,11 +201,12 @@ macro "Void Whizzard"{
 
 		for (i = 0; i < imglist.length; i++){
 			curr_img = imglist[i];
+			k = 0;
 			if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
 				open(inDir + File.separator + curr_img);
-				pts = Array.getSequence(intsec_lens[i]);
+				pts = Array.getSequence(intsec_lens[k]);
 				for (j = 0; j < pts.length; j++){
-					pts[j] += intsec_idxs[i];
+					pts[j] += intsec_idxs[k];
 				}
 
 				arr = newArray(1);
@@ -227,6 +234,7 @@ macro "Void Whizzard"{
 				saveAs("Tiff", cropDir + curr_img);
 				run("Close");
 				IJ.deleteRows(res_idx, nResults - 1);
+				k++;
 			}
 		}
 		//roiManager("Save", cropDir + "RoiSet.zip");
@@ -294,10 +302,11 @@ macro "Void Whizzard"{
 	binlist = getFileList(binDir);
 
 	showProgress(0.9);
+	run("Collect Garbage");
 
 	initAnalysisTable("Summary");
 	//initAnalysisTable("RAW");
-	for (i = 0; i < binlist.length; i++){
+	for (i = 0; i < binlist.length; i++){	
 		curr_img = binlist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
 			open(binDir + File.separator + curr_img);
@@ -431,6 +440,8 @@ macro "Void Whizzard"{
 			selectWindow("Corner Ellipses");
 			wait(500);
 			run("Close");
+			selectWindow(curr_img);
+			run("Close");
 		}
 	}
 
@@ -453,7 +464,7 @@ macro "Void Whizzard"{
 function process(img){
 	selectWindow(img);
 	imgID = getImageID();
-	gmmVSA2(imgID);
+	gmmVSA(imgID);
 	/*
 	run("Despeckle");
 	run("Kuwahara Filter", "sampling=5");
@@ -508,8 +519,8 @@ function gmmVSA2(img){
 	/* Partition boundaries. */
 	p1l = 1000;	// Lower.
 	p1u = 6000;	// Upper.
-	p2l = 13000;
-	p2u = 16000;
+	p2l = 12000;
+	p2u = 16000; 
 
 	/* Get histogram data */
 	selectImage(img);
@@ -678,6 +689,7 @@ function gmmVSA2(img){
 	setThreshold(values[p2max_idx],65535);
 	run("Convert to Mask");
 	resetThreshold();
+	run("Options...", "iterations=5 count=7 black do=Erode");
 	
 	/* TODO
 	selectImage(img);
@@ -736,7 +748,7 @@ function initAnalysisTable(str){
 		return;
 	}
 
-	newImage("temp", "8-bit black", 699, 430, 1);
+	newImage("tempImg", "8-bit black", 699, 430, 1);
 	
 	run("Set Measurements...", "  redirect=None decimal=4");
 	if (isOpen("Results")){
@@ -752,17 +764,21 @@ function initAnalysisTable(str){
 		IJ.renameResults("Results", "Analysis " + str + " Results");
 	}
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
-	selectWindow("temp");
+	selectWindow("tempImg");
 	run("Close");
 }
 
 function getEllipses(e_idx){
 	run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
-	sels = roiSelect(e_idx, roiManager("Count"));
-	roiManager("Select", sels);
-	roiManager("Measure");
+	//sels = roiSelect(e_idx, roiManager("Count"));
+	num = e_idx - (roiManager("Count"));
 
-	for (i = 0; i < sels.length; i++){
+	for (i = 0; i < num; i++){
+		roiManager("Select", i + e_idx);
+		run("Measure");
+	}
+
+	for (i = 0; i < num; i++){
 		roiManager("Select", i + e_idx);
 		run("Add Selection...");
 	}
@@ -1300,4 +1316,248 @@ function arraySubsample(array, s, e){
 	}
 
 	return retArray;
+}
+
+function gmmVSA(img){
+	/* Partition indicies. */
+	p1_idx = 0;
+	p2_idx = 0;
+
+	/* Partition boundaries. */
+	p1l = 1000;	// Lower.
+	p1u = 6000;	// Upper.
+	p2l = 12000;
+	p2u = 20000;
+
+	/* Get histogram data */
+	selectImage(img);
+
+	run("Despeckle");
+	run("Kuwahara Filter", "sampling=5");
+
+	nbins = 256;
+	getHistogram(values, counts, nbins);
+	getStatistics(dummy, dummy, min, max);
+
+	if (max <= 32768){
+		selectImage(img);
+		setThreshold(max,max);
+		run("Convert to Mask");
+		resetThreshold();
+		return 0;
+	}
+
+	// Ignore any saturation, if present.
+	if (max == 65535){
+		counts[counts.length - 1] = counts[counts.length - 2];
+	}
+
+	/* Convert the partition boundary values into indicies. */
+	p1l_idx = 0;	// Index of lower bound.
+	p1u_idx = 0;	// Index of upper bound.
+	p2l_idx = 0;
+	p2u_idx = 0;
+
+	p1lSET = false;	// Flags.
+	p1uSET = false;
+	p2lSET = false;
+	p2uSET = false;
+
+	if (p1l <= min){
+		p1lSET = true;
+	}
+
+	if (p2u >= max){
+		p2u_idx = nbins - 1;
+		p2uSET = true;
+	}
+
+	for (i = 0; i < values.length; i++){
+		if (!p1lSET && p1l <= values[i]){
+			p1l_idx = i;
+			p1lSET = true;
+		}
+
+		if (!p1uSET && p1u <= values[i]){
+			p1u_idx = i;
+			p1uSET = true;
+		}
+
+		if (!p2lSET && p2l <= values[i]){
+			p2l_idx = i;
+			p2lSET = true;
+		}
+
+		if (!p2uSET && p2u <= values[i]){
+			p2u_idx = i;
+			p2uSET = true;
+		}
+	}
+	
+	/*// Debugging
+	print("Min: " + min + ", Max: " + max);
+	Array.print(values);
+	print("P1_Lower: " + p1l_idx + "[" + values[p1l_idx] + "]");
+	print("P1_Upper: " + p1u_idx + "[" + values[p1u_idx] + "]");
+	print("P2_Lower: " + p2l_idx + "[" + values[p2l_idx] + "]");
+	print("P2_Upper: " + p2u_idx + "[" + values[p2u_idx] + "]");
+	*/
+
+	minError = 99999999;
+	minErr1 = 0;
+	minErr2 = 0;
+	minErr3 = 0;
+	p1min = newArray(1);
+	p2min = newArray(1);
+	p3min = newArray(1);
+	p1min_idx = 0;
+	p2min_idx = 0;
+	for (p1_idx = p1l_idx; p1_idx <= p1u_idx; p1_idx++){
+		for (p2_idx = p2l_idx; p2_idx <= p2u_idx; p2_idx++){
+			p1 = fitGaussian(counts, 0, p1_idx);
+			p2 = fitGaussian(counts, p1_idx, p2_idx);
+			p3 = fitGaussian(counts, p2_idx, 255);
+
+			err1 = calcError(counts, p1[0], p1[1], p1[2]);
+			err2 = calcError(counts, p2[0], p2[1], p2[2]);
+			err3 = calcError(counts, p3[0], p3[1], p3[2]);
+			totErr = err1 + err2 + err3;
+			if (totErr < minError){
+				minErr = totErr;
+				minErr1 = err1;
+				minErr2 = err2;
+				minErr3 = err3;
+
+				p1min = Array.copy(p1);
+				p2min = Array.copy(p2);
+				p3min = Array.copy(p3);
+
+				p1min_idx = p1_idx;
+				p2min_idx = p2_idx;
+			}
+		}
+	}
+
+	/*
+	print("P1: " + p1min_idx + "[" + values[p1min_idx] + "]" + ", P2: " + p2min_idx + "[" + values[p2min_idx] + "]");
+	print("");
+	print("Max: " + p1min[0] + ", Mu: " + p1min[1] + ", Variance: " + p1min[2]);
+	print("Max: " + p2min[0] + ", Mu: " + p2min[1] + ", Variance: " + p2min[2]);
+	print("Max: " + p3min[0] + ", Mu: " + p3min[1] + ", Variance: " + p3min[2]);
+	 */
+	gy1 = newArray(256);
+	for (i = 0; i < 256; i++){
+		gy1[i] = gamma(p1min[0], p1min[1], p1min[2], i);
+	}
+
+	gy2 = newArray(256);
+	for (i = 0; i < 256; i++){
+		gy2[i] = gamma(p2min[0], p2min[1], p2min[2], i);
+	}
+
+	gy3 = newArray(256);
+	for (i = 0; i < 256; i++){
+		gy3[i] = gamma(p3min[0], p3min[1], p3min[2], i);
+	}
+
+	Plot.create("Histogram", "Pixel Value", "Count");
+	Plot.setColor("black");
+	Plot.add("line", values, counts);
+	Plot.setLimitsToFit();
+	Plot.setColor("blue");
+	Plot.add("line", values, gy1);
+	Plot.setColor("green");
+	Plot.add("line", values, gy2);
+	Plot.setColor("red");
+	Plot.add("line", values, gy3);
+	Plot.show();
+
+	thresh = calcThreshold(p2min[0], p2min[1], p2min[2], p3min[0], p3min[1], p3min[2]);
+	print("Threshold: " + thresh);
+
+	selectImage(img);
+	setThreshold(values[thresh],65535);
+	run("Convert to Mask");
+	resetThreshold();
+	print("---------------");
+
+	return minError;
+}
+
+function fitGaussian(y, s, e){
+	mu = 0;
+	sigma = 0;
+	max = 0;
+	cardinal = 0;
+	variance = 0;
+
+	for (i = s; i <= e; i++){
+		cardinal += y[i];
+		mu += i*y[i];
+	}
+
+	if (cardinal == 0){
+		mu = 0;
+		sigma = 0;
+	} else {
+		mu /= cardinal;
+		mu = round(mu);
+	}
+
+	if (mu != 0){
+		for (i = s; i < e; i++){
+			sigma += y[i]*pow(i - mu, 2);
+		}
+		sigma /= cardinal;
+		
+		idx = mu;
+		sum = y[idx];
+		num = 1;
+		if (idx - 1 >= 0){
+			sum += y[idx-1];
+			num++;
+		}
+		if (idx + 1 <= 255){
+			sum += y[idx+1];
+			num++;
+		}
+		max = sum/num;
+
+		variance = 2*sigma;
+	}
+
+	ret = newArray(max, mu, variance);
+
+	return ret;
+}
+
+function gamma(max, mu, variance, x){
+	if (variance == 0){
+		return 0;
+	}
+	return (max * exp(-(pow(x - mu, 2))/variance));
+}
+
+function calcError(count, max, mu, variance){
+	error = 0;
+
+	for (i = 0; i < 256; i++){
+		error += pow(gamma(max, mu, variance, i) - count[i], 2);
+	}
+
+	return error / 256;
+}
+
+function calcThreshold(max1, mu1, var1, max2, mu2, var2){
+	minErr = 99999999;
+	threshold = 0;
+
+	for (i = mu1; i < mu2; i++){
+		val = pow(gamma(max1, mu1, var1, i) - gamma(max2, mu2, var2, i), 2);
+		if (minErr > val){
+			minErr = val;
+			threshold = i;
+		}
+	}
+	return threshold;
 }
