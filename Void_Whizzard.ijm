@@ -11,8 +11,7 @@ macro "Void Whizzard"{
 	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
 	Dialog.addString("Area Units: ", "inch", 12);
 	Dialog.addString("Volume Units: ", "uL", 12);
-	Dialog.addCheckbox("Verbose", false);
-	Dialog.addCheckbox("Cropped", false);
+	//Dialog.addCheckbox("Verbose", false);
 	
 	Dialog.show();
 	
@@ -66,8 +65,9 @@ macro "Void Whizzard"{
 		paperUnits = "pixel";
 	}
 
-	verbose = Dialog.getCheckbox();
-	precropped = Dialog.getCheckbox();
+	//verbose = Dialog.getCheckbox();
+	verbose = false;
+	precropped = true;
 
 	// Debugging
 	if (verbose){
@@ -91,6 +91,14 @@ macro "Void Whizzard"{
 
 	start_time = getTime(); // Time how long the macro takes to execute.
 	//run("ROI Manager...");	// Open ROImanager.
+	/*
+	newImage("tempImg", "8-bit black", 699, 430, 1);
+	run("Measure");
+	run("Clear Results");
+	selectWindow("tempImg");
+	selectWindow("tempImg");
+	run("Close");
+	*/
 	
 	setBatchMode(true);
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
@@ -123,8 +131,6 @@ macro "Void Whizzard"{
 			} 
 		}
 
-		showProgress(0);
-
 		// Isolate the largest spot from the image.
 		j = 0;
 		for (i = 0; i < imglist.length; i++){
@@ -144,8 +150,6 @@ macro "Void Whizzard"{
 				j++;
 			}
 		}
-
-		showProgress(0.1);
 	
 		houghlist = getFileList(houghDir);	// The images to be transformed.
 		thetaAxisSize = "400";
@@ -167,7 +171,6 @@ macro "Void Whizzard"{
 			}
 		}
 	
-		showProgress(0.4);
 	
 		houghlistnew = getFileList(houghDir); // All files
 	
@@ -196,8 +199,6 @@ macro "Void Whizzard"{
 				j++;
 			}
 		}
-
-		showProgress(0.6);
 
 		for (i = 0; i < imglist.length; i++){
 			curr_img = imglist[i];
@@ -246,8 +247,6 @@ macro "Void Whizzard"{
 		}
 	}
 
-	showProgress(0.7);
-
 	croplist = getFileList(cropDir);
 	for (i = 0; i < croplist.length; i++){
 		curr_img = croplist[i];
@@ -262,8 +261,8 @@ macro "Void Whizzard"{
 
 	a = 0;
 	b = 0;
-	
 	convDir = inDir + File.separator + "conv.txt";
+	
 	if (convertVolume) {
 		convs = File.openAsString(convDir);
 		rows = split(convs, "\n");
@@ -287,166 +286,191 @@ macro "Void Whizzard"{
 		Fit.doFit("Straight Line", areab, volb); // Form: y = a + bx;
 		a = Fit.p(0);
 		b = Fit.p(1);
-		if (a < 0){
-			if (verbose){
-				print(a + "(0), " + b);
-			}
-			a = 0;
-		} else {
-			if (verbose){
-				print(a + ", " + b);
-			}
-		}
+		//print(a + ", " + b);
 	}
-
-	binlist = getFileList(binDir);
-
-	showProgress(0.9);
-	run("Collect Garbage");
 
 	initAnalysisTable("Summary");
 	//initAnalysisTable("RAW");
-	for (i = 0; i < binlist.length; i++){	
-		curr_img = binlist[i];
-		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
+	i = 0;
+	for (t = 0; t < imglist.length; t++){
+		curr_img = imglist[t];
+		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
 			open(binDir + File.separator + curr_img);
-			analyzeSpots(curr_img, convertVolume, paperWidth, paperHeight, paperUnits);
+
+			c = nResults;
+			run("Measure");
+			if (getResult("Mean", c) == 0 || isNaN(getResult("Mean", c))){
+				selectWindow("Results");
+				selectWindow("Results");
+				run("Close");
+				
+				IJ.renameResults("Analysis Summary Results", "Results");
+
+				label = getTitle();
+				setResult("Label", i, label);
+				setResult("Count", i, 0);	
+				setResult("Total Area (" + paperUnits + "^2)", i, 0);
+				if (convertVolume){
+					setResult("Total Volume (" + paperUnitsV + ")", i, 0);
+				}
+				setResult("Percent area in center", i, 0);
+				setResult("Percent area in corners", i, 0);
+	
+				for (j = 0; j < totBins.length - 1; j++){
+					setResult(bins[j] + "--" + bins[j+1] + " " + paperUnits, i, 0);
+				}
+				setResult(bins[bins.length-1] + "+ " + paperUnits, i, 0);
 			
-			size_u = parseFloat(size_u);
-			if (isNaN(size_u)){
-				size_u = 1000000000;
-			}
-			size_d = parseFloat(size_d);
-			if (isNaN(size_d)){
+				IJ.renameResults("Results", "Analysis Summary Results");
+				i++;
+			} else {
+				selectWindow("Results");
+				selectWindow("Results");
+				run("Close");
+				analyzeSpots(curr_img, convertVolume, paperWidth, paperHeight, paperUnits);
+				
+				size_u = parseFloat(size_u);
+				if (isNaN(size_u)){
+					size_u = 1000000000;
+				}
+				size_d = parseFloat(size_d);
+				if (isNaN(size_d)){
 				size_d = 0;
-			}
+				}
+	
+				circ_u = parseFloat(size_u);
+				if (isNaN(circ_u)){
+					circ_u = 1000000000;
+				}
+				circ_d = parseFloat(size_d);
+				if (isNaN(circ_d)){
+					circ_d = 0;
+				}	
 
-			circ_u = parseFloat(size_u);
-			if (isNaN(circ_u)){
-				circ_u = 1;
-			}
-			circ_d = parseFloat(size_d);
-			if (isNaN(circ_d)){
-				circ_d = 0;
-			}
-
-			// Measure ellipses in the entire energy
-			totArea = 0;
-			totVolume = 0;
-			totCount = 0;
-			totBins = newArray(bins.length);
-
-			IJ.renameResults("Ellipses", "Results");
-			num = nResults;
-			for (j = 0; j < num; j++){
-				currArea = getResult("Area", j);
-				currCirc = getResult("Circ.", j);
-				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
-					totArea += currArea;
-					totCount++;
-					if (convertVolume){
-						totVolume += (a + (currArea * b));
+				// Measure ellipses in the entire energy
+				totArea = 0;
+				totVolume = 0;
+				totCount = 0;
+				totBins = newArray(bins.length);
+	
+				IJ.renameResults("Ellipses", "Results");
+				num = nResults;
+				for (j = 0; j < num; j++){
+					currArea = getResult("Area", j);
+					currCirc = getResult("Circ.", j);
+					if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+						totArea += currArea;
+						totCount++;
+						if (convertVolume){
+							totVolume += (a + (currArea * b));
+						}
 					}
 				}
-			}
-
-			for (j = 0; j < totBins.length; j++){
-				for (k = 0; k < num; k++){
-					currArea = getResult("Area", k);
-					currCirc = getResult("Circ.", k);
-					if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
-						if (j < (totBins.length - 1)){
-							if (currArea > bins[j] && currArea < bins[j+1]){
-								totBins[j] += 1;
-							}
-						} else {
-							if (currArea > bins[j]){
-								totBins[j] += 1;
+	
+				for (j = 0; j < totBins.length; j++){
+					for (k = 0; k < num; k++){
+						currArea = getResult("Area", k);
+						currCirc = getResult("Circ.", k);
+						if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+							if (j < (totBins.length - 1)){
+								if (currArea > bins[j] && currArea < bins[j+1]){
+									totBins[j] += 1;
+								}
+							} else {
+								if (currArea > bins[j]){
+									totBins[j] += 1;
+								}
 							}
 						}
 					}
 				}
-			}
+				
+				IJ.renameResults("Results", "Ellipses");
 			
-			IJ.renameResults("Results", "Ellipses");
-
-			// Measure ellipses in center.
-			areaCenter = 0;
-			
-			IJ.renameResults("Center Ellipses", "Results");
-			
-			num = nResults;
-			for (j = 0; j < num; j++){
-				currArea = getResult("Area", j);
-				currCirc = getResult("Circ.", j);
-				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
-					areaCenter += currArea;
+	
+				// Measure ellipses in center.
+				areaCenter = 0;
+				
+				IJ.renameResults("Center Ellipses", "Results");
+				
+				num = nResults;
+				for (j = 0; j < num; j++){
+					currArea = getResult("Area", j);
+					currCirc = getResult("Circ.", j);
+					if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+						areaCenter += currArea;
+					}
 				}
-			}
-			IJ.renameResults("Results", "Center Ellipses");
-
-			// Measure ellipses in corners.
-			areaCorners = 0;
-			
-			IJ.renameResults("Corner Ellipses", "Results");
-			
-			num = nResults;
-			for (j = 0; j < num; j++){
-				currArea = getResult("Area", j);
-				currCirc = getResult("Circ.", j);
-				if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
-					areaCorners += currArea;
+				IJ.renameResults("Results", "Center Ellipses");
+	
+				// Measure ellipses in corners.
+				areaCorners = 0;
+				
+				IJ.renameResults("Corner Ellipses", "Results");
+				
+				num = nResults;
+				for (j = 0; j < num; j++){
+					currArea = getResult("Area", j);
+					currCirc = getResult("Circ.", j);
+					if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
+						areaCorners += currArea;
+					}
 				}
-			}
-			IJ.renameResults("Results", "Corner Ellipses");
+				IJ.renameResults("Results", "Corner Ellipses");
+				
+				// Print Results to Summary Table.
+				IJ.renameResults("Analysis Summary Results", "Results");
+	
+				label = getTitle();
+				setResult("Label", i, label);
+				setResult("Count", i, totCount);	
+				setResult("Total Area (" + paperUnits + "^2)", i, totArea);
+				if (convertVolume){
+					setResult("Total Volume (" + paperUnitsV + ")", i, totVolume);
+				}
+
+				if (totArea == 0){
+					setResult("Percent area in center", i, 0);
+					setResult("Percent area in corners", i, 0);
+				} else {
+					setResult("Percent area in center", i, (areaCenter / totArea) * 100);
+					setResult("Percent area in corners", i, (areaCorners / totArea) * 100);
+				}
+
+				for (j = 0; j < totBins.length - 1; j++){
+					setResult(bins[j] + "--" + bins[j+1] + " " + paperUnits, i, totBins[j]);
+				}
+				setResult(bins[bins.length-1] + "+ " + paperUnits, i, totBins[totBins.length-1]);
 			
-			// Print Results to Summary Table.
-			IJ.renameResults("Analysis Summary Results", "Results");
-
-			label = getTitle();
-			setResult("Label", i, label);
-			setResult("Count", i, totCount);
-			setResult("Total Area (" + paperUnits + "^2)", i, totArea);
-			if (convertVolume){
-				setResult("Total Volume (" + paperUnitsV + ")", i, totVolume);
+				IJ.renameResults("Results", "Analysis Summary Results");
+	
+				// Cleanup: Close windows.
+				if (roiManager("Count") > 0){
+					sel = roiSelect(0, roiManager("Count"));
+					roiManager("Select", sel);
+					roiManager("Delete");
+				}
+			
+				selectWindow("Ellipses");
+				selectWindow("Ellipses");
+				run("Close");
+				selectWindow("Center Ellipses");
+				selectWindow("Center Ellipses");
+				run("Close");
+				selectWindow("Corner Ellipses");
+				selectWindow("Corner Ellipses");
+				run("Close");
+				selectWindow(curr_img);
+				selectWindow(curr_img);
+				run("Close");
+				i++;
 			}
-			setResult("Percent area in center", i, (areaCenter / totArea) * 100);
-			setResult("Percent area in corners", i, (areaCorners / totArea) * 100);
-
-			for (j = 0; j < totBins.length - 1; j++){
-				setResult(bins[j] + "--" + bins[j+1] + " (" + paperUnits + "^2)", i, totBins[j]);
-			}
-			setResult(bins[bins.length-1] + "+ " + paperUnits, i, totBins[totBins.length-1]);
-		
-			IJ.renameResults("Results", "Analysis Summary Results");
-
-			// Cleanup: Close windows.
-			if (roiManager("Count") > 0){
-				sel = roiSelect(0, roiManager("Count"));
-				roiManager("Select", sel);
-				roiManager("Delete");
-			}
-
-			// The duplicate commands are necessary, otherwise the wrong window may be closed.
-			selectWindow("Ellipses");
-			selectWindow("Ellipses");
-			wait(500);
-			run("Close");
-			selectWindow("Center Ellipses");
-			selectWindow("Center Ellipses");
-			wait(500);
-			run("Close");
-			selectWindow("Corner Ellipses");
-			selectWindow("Corner Ellipses");
-			wait(500);
-			run("Close");
-			selectWindow(curr_img);
-			run("Close");
 		}
 	}
-
+	wait(500);
 	saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
-
+	wait(500);
+	
 	waitForUser("Void Whizzard", "The Void Whizzard has finished executing.");
 	
 	setBatchMode("Exit and Display");
@@ -465,50 +489,6 @@ function process(img){
 	selectWindow(img);
 	imgID = getImageID();
 	gmmVSA(imgID);
-	/*
-	run("Despeckle");
-	run("Kuwahara Filter", "sampling=5");
-	run("Median...", "radius=1");
-	//run("Gamma...", "value=1.70");
-	//run("Enhance Contrast...", "saturated=0.5 normalize");
-
-	getHistogram(values, counts, 256);
-	Array.getStatistics(counts, min, max, mean, stdDev);
-	maxima = Array.findMaxima(counts, 200, 1);
-
-	greaterMaxima = newArray(50);
-	n = 0;
-	threshold = mean + (stdDev * 0.8);
-	for (i = 0; i < maxima.length; i++){
-		if (counts[maxima[i]] > threshold){
-			greaterMaxima[i] = maxima[i];
-			n++;
-		}
-	}
-
-	greaterMaxima = Array.trim(greaterMaxima, n);
-	greaterMaxima = Array.sort(greaterMaxima);
-	greaterMaxima = Array.reverse(greaterMaxima);
-	
-	mins = Array.findMinima(counts, 25);
-	mins = Array.sort(mins);
-	
-	if (verbose){
-		print("Max: " + values[greaterMaxima[0]]);
-	}
-
-	for (i = 0; i < mins.length; i++){
-		if (values[mins[i]] > values[greaterMaxima[0]]){
-			if (verbose){
-				print("Threshold: " + values[mins[i]]);
-			}
-			setThreshold(values[mins[i]], 65535);
-			run("Convert to Mask");
-			run("Fill Holes");
-			return;
-		}
-	}
-	*/
 }
 
 function gmmVSA2(img){
@@ -644,46 +624,9 @@ function gmmVSA2(img){
 				y3max = Array.copy(y3);
 			}
 
-			showProgress(curr_idx++, end_idx);
+			
 		}
 	}
-
-	/* Debugging
-	print("Total Error: " + maxError);
-	print("P1: " + values[p1max_idx] + ", P2: " + values[p2max_idx]);
-	print("Gaussian Error: " + g1MinErr + ", " + g2MinErr + ", " + g3MinErr);
-	print("----------------------------------------------------------------");
-	
-	Fit.doFit(21, x1max, y1max);
-	gy1 = newArray(nbins);	//gaussian y
-	for (i = 0; i < nbins; i++){
-		gy1[i] = Fit.f(values[i]);
-	}
-
-	Fit.doFit(21, x2max, y2max);
-	gy2 = newArray(nbins);	//gaussian y
-	for (i = 0; i < nbins; i++){
-		gy2[i] = Fit.f(values[i]);
-	}
-
-	Fit.doFit(21, x3max, y3max);
-	gy3 = newArray(nbins);	//gaussian y
-	for (i = 0; i < nbins; i++){
-		gy3[i] = Fit.f(values[i]);
-	}
-
-	Plot.create("Histogram", "Pixel Value", "Count");
-	Plot.setColor("black");
-	Plot.add("line", values, counts);
-	Plot.setLimitsToFit();
-	Plot.setColor("blue");
-	Plot.add("line", values, gy1);
-	Plot.setColor("green");
-	Plot.add("line", values, gy2);
-	Plot.setColor("red");
-	Plot.add("line", values, gy3);
-	Plot.show();
-	*/
 
 	selectImage(img);
 	setThreshold(values[p2max_idx],65535);
@@ -748,44 +691,50 @@ function initAnalysisTable(str){
 		return;
 	}
 
-	newImage("tempImg", "8-bit black", 699, 430, 1);
+	newImage("temp", "8-bit black", 699, 430, 1);
 	
 	run("Set Measurements...", "  redirect=None decimal=4");
 	if (isOpen("Results")){
-		IJ.renameResults("Results", "temp");
 		run("Set Measurements...", "  redirect=None decimal=4");
 		run("Measure");
 		run("Clear Results");
 		IJ.renameResults("Results", "Analysis " + str + " Results");
-		IJ.renameResults("temp", "Results");
+		IJ.renameResults("Temp", "Results");
 	} else {
 		run("Measure");
 		run("Clear Results");
 		IJ.renameResults("Results", "Analysis " + str + " Results");
 	}
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
-	selectWindow("tempImg");
+	selectWindow("temp");
 	run("Close");
 }
 
 function getEllipses(e_idx){
+	run("8-bit");
+	oldcount = roiManager("Count");
 	run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
-	//sels = roiSelect(e_idx, roiManager("Count"));
-	num = e_idx - (roiManager("Count"));
+	newcount = roiManager("Count");
 
-	for (i = 0; i < num; i++){
-		roiManager("Select", i + e_idx);
+	if (newcount > oldcount){
+		sels = roiSelect(e_idx, roiManager("Count"));
+		roiManager("Select", sels);
+		roiManager("Measure");
+	
+		for (i = 0; i < sels.length; i++){
+			roiManager("Select", i + e_idx);
+			run("Add Selection...");
+		}
+
+		IJ.renameResults("Results", "Ellipses");
+
+		return roiManager("Count") - e_idx;
+	} else {
 		run("Measure");
+		IJ.deleteRows(0,1);
+		IJ.renameResults("Results", "Ellipses");
+		return 0;
 	}
-
-	for (i = 0; i < num; i++){
-		roiManager("Select", i + e_idx);
-		run("Add Selection...");
-	}
-
-	IJ.renameResults("Results", "Ellipses");
-
-	return roiManager("Count") - e_idx;
 }
 
 function getEllipsesSelection(title, c_idx, e_idx, e_num){
@@ -1403,7 +1352,7 @@ function gmmVSA(img){
 	print("P2_Upper: " + p2u_idx + "[" + values[p2u_idx] + "]");
 	*/
 
-	minError = 99999999;
+	minError = 99999999999;
 	minErr1 = 0;
 	minErr2 = 0;
 	minErr3 = 0;
@@ -1444,7 +1393,7 @@ function gmmVSA(img){
 	print("Max: " + p1min[0] + ", Mu: " + p1min[1] + ", Variance: " + p1min[2]);
 	print("Max: " + p2min[0] + ", Mu: " + p2min[1] + ", Variance: " + p2min[2]);
 	print("Max: " + p3min[0] + ", Mu: " + p3min[1] + ", Variance: " + p3min[2]);
-	 */
+	*/
 	gy1 = newArray(256);
 	for (i = 0; i < 256; i++){
 		gy1[i] = gamma(p1min[0], p1min[1], p1min[2], i);
@@ -1459,7 +1408,7 @@ function gmmVSA(img){
 	for (i = 0; i < 256; i++){
 		gy3[i] = gamma(p3min[0], p3min[1], p3min[2], i);
 	}
-
+	/*
 	Plot.create("Histogram", "Pixel Value", "Count");
 	Plot.setColor("black");
 	Plot.add("line", values, counts);
@@ -1471,15 +1420,16 @@ function gmmVSA(img){
 	Plot.setColor("red");
 	Plot.add("line", values, gy3);
 	Plot.show();
+	*/
 
 	thresh = calcThreshold(p2min[0], p2min[1], p2min[2], p3min[0], p3min[1], p3min[2]);
-	print("Threshold: " + thresh);
+	//print("Threshold: " + thresh);
 
 	selectImage(img);
 	setThreshold(values[thresh],65535);
 	run("Convert to Mask");
 	resetThreshold();
-	print("---------------");
+	//print("---------------");
 
 	return minError;
 }

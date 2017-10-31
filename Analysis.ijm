@@ -16,8 +16,7 @@ macro "Analyze_Spots"{
 	paperWidth  = 10.875;
 	paperHeight = 6.375;
 	paperUnits  = "inch";
-	volu  = "";
-	areau = "";
+	volu  = "uL";
 
 	inDir = getDirectory("Choose Input Directory");
 	imglist = getFileList(inDir);
@@ -31,11 +30,8 @@ macro "Analyze_Spots"{
 		if (rows.length > 3){
 			exit("Invalid convert file. Too many rows.");
 		}
-		units = split(rows[0], "\t");
-		volu = units[0];
-		areau = units[1];
-		volb = split(rows[1], "\t");
-		areab = split(rows[2], "\t");
+		volb = split(rows[0], "\t");
+		areab = split(rows[1], "\t");
 		if (volb.length != areab.length){
 			exit("Volume-Area dimension mismatch.");
 		}
@@ -179,15 +175,22 @@ macro "Analyze_Spots"{
 			}
 			
 			selectWindow("Ellipses");
+			selectWindow("Ellipses");
 			run("Close");
 			selectWindow("Center Ellipses");
+			selectWindow("Center Ellipses");
 			run("Close");
+			selectWindow("Corner Ellipses");
 			selectWindow("Corner Ellipses");
 			run("Close");
 		}
 	}
 	
 	setBatchMode("Exit and Display");
+}
+
+function analyzePapers(dir, cv){
+	
 }
 
 function analyzeSpots(img, convA, pWidth, pHeight, pUnits){
