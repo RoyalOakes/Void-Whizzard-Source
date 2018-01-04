@@ -90,15 +90,6 @@ macro "Void Whizzard"{
 	areab = newArray(1);
 
 	start_time = getTime(); // Time how long the macro takes to execute.
-	//run("ROI Manager...");	// Open ROImanager.
-	/*
-	newImage("tempImg", "8-bit black", 699, 430, 1);
-	run("Measure");
-	run("Clear Results");
-	selectWindow("tempImg");
-	selectWindow("tempImg");
-	run("Close");
-	*/
 	
 	setBatchMode(true);
 	run("Set Measurements...", "area mean standard min centroid center perimeter bounding fit shape display redirect=None decimal=4");
@@ -889,7 +880,6 @@ function processHough(bin, hough){
 	//}
 
 	d = 15;		// Arbitrary constant used to detect intersections. Must be greater than 1.
-	// TODO Find better way to size the arrays.
 	xSec = newArray(150);	// The x value of the intersection points.
 	ySec = newArray(150); 	// The y value of the intersection points.
 	n = 0;							// The number of intersections for this hough transform.
