@@ -470,6 +470,21 @@ macro "Void Whizzard"{
 	wait(500);
 	saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
 	wait(500);
+
+	// Create overlay files
+	binOverFiles = getFileList(binDir);
+	roist = roiManager("Count");
+	for (p = 0; p < binOverFiles.length; p++){
+		roist = roiManager("Count");
+		open(binDir + File.separator + binOverFiles[p]);
+		saveZip = getTitle() + ".zip";
+		run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
+		ovselc = roiSelect(roist, roiManager("Count"));
+		roiManager("Select", ovselc);
+		roiManager("Save", binDir + File.separator + saveZip);
+		roiManager("Select", ovselc);
+		roiManager("Delete");
+	}
 	
 	waitForUser("Void Whizzard", "The Void Whizzard has finished executing.");
 	
