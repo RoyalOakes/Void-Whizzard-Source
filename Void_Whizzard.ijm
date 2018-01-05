@@ -1,8 +1,18 @@
+/*
+ * This is the source code for the Void Whizzard.
+ * 
+ * Author: Steven Royal Oakes (soakes@wisc.edu)
+ * 
+ * Version: v1.0
+ * 
+ * Date: 2018/01/05
+ */
+
 macro "Void Whizzard"{
 	Dialog.create("User Settings");
 	Dialog.addString("Spot Size: ", "0-infinity", 12);
 	Dialog.addString("Circularity: ", "0-1", 12);
-	Dialog.addString("Bins: ", "0-1-2-3-4-5", 12);
+	Dialog.addString("Bins: ", "0-0.1-0.25-0.5-1-2-3-4", 12);
 	Dialog.addNumber("% Offset Center: ", 30, 0, 6, "%");
 	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
 	Dialog.addCheckbox("Convert area to volume", true);
