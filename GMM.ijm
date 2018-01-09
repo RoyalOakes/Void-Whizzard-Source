@@ -1,6 +1,135 @@
 macro "VSA_GMM"{
 	img = getImageID();
-	gmmVSA3(img);
+	//gmmVSA_UV(img);
+	gmmVSA_N(img);
+}
+
+function gmmVSA_N(img){
+	/* Partition index. */
+	p_idx = 0;
+
+	/* Partition boundary. */
+	pl = 2000;
+	pu = 16000;
+
+	/* Get histogram data */
+	selectImage(img);
+
+	run("Despeckle");
+	run("Kuwahara Filter", "sampling=5");
+
+	nbins = 256;
+	getHistogram(values, counts, nbins);
+	getStatistics(dummy, dummy, min, max);
+
+	if (max <= 3000){
+		selectImage(img);
+		return 0;
+	}
+
+	// Ignore any saturation, if present.
+	if (max == 65535){
+		counts[counts.length - 1] = counts[counts.length - 2];
+	}
+
+	if (min == 0){
+		counts[0] = counts[2];
+	}
+
+	/* Convert the partition boundary values into indicies. */
+	pl_idx = 0;	// Index of lower bound.
+	pu_idx = 0;	// Index of upper bound.
+
+	plSET = false;	// Flags.
+	puSET = false;
+
+	if (pl <= min){
+		plSET = true;
+	}
+	
+	if (pu >= max){
+		pu_idx = nbins - 1;
+		puSET = true;
+	}
+
+	for (i = 0; i < values.length; i++){
+		if (!plSET && pl <= values[i]){
+			pl_idx = i;
+			plSET = true;
+		}
+
+		if (!puSET && pu <= values[i]){
+			pu_idx = i;
+			puSET = true;
+		}
+	}
+
+	print("Min: " + min + ", Max: " + max);
+	Array.print(values);
+	print("P1_Lower: " + pl_idx + "[" + values[pl_idx] + "]");
+	print("P1_Upper: " + pu_idx + "[" + values[pu_idx] + "]");
+
+	minError = 9999999999999;
+	minErr1 = 0;
+	minErr2 = 0;
+	p1min = newArray(1);
+	p2min = newArray(1);
+	pmin_idx = 0;
+	for (p_idx = pl_idx; p_idx <= pu_idx; p_idx++){
+		p1 = fitGaussian(counts, 0, p_idx);
+		p2 = fitGaussian(counts, p_idx, 255);
+		
+		err1 = calcError(counts, p1[0], p1[1], p1[2]);
+		err2 = calcError(counts, p2[0], p2[1], p2[2]);
+		
+		totErr = err1 + err2;
+		if (totErr < minError){
+			minError = totErr;
+			
+			minErr1 = err1;
+			minErr2 = err2;
+			
+			p1min = Array.copy(p1);
+			p2min = Array.copy(p2);
+			
+			pmin_idx = p_idx;
+		}
+	}
+
+	print("P: " + pmin_idx + "[" + values[pmin_idx] + "]");
+	print("");
+	print("Max: " + p1min[0] + ", Mu: " + p1min[1] + ", Variance: " + p1min[2]);
+	print("Max: " + p2min[0] + ", Mu: " + p2min[1] + ", Variance: " + p2min[2]);
+
+	gy1 = newArray(256);
+	for (i = 0; i < 256; i++){
+		gy1[i] = gamma(p1min[0], p1min[1], p1min[2], i);
+	}
+
+	gy2 = newArray(256);
+	for (i = 0; i < 256; i++){
+		gy2[i] = gamma(p2min[0], p2min[1], p2min[2], i);
+	}
+
+	Plot.create("Histogram", "Pixel Value", "Count");
+	Plot.setColor("black");
+	Plot.add("line", values, counts);
+	Plot.setLimitsToFit();
+	Plot.setColor("blue");
+	Plot.add("line", values, gy1);
+	Plot.setColor("green");
+	Plot.add("line", values, gy2);
+
+	thresh = calcThreshold(p1min[0], p1min[1], p1min[2], p2min[0], p2min[1], p2min[2]);
+	print("Threshold: " + thresh);
+
+	selectImage(img);
+	setThreshold(values[thresh],65535);
+	run("Convert to Mask");
+	resetThreshold();
+	print("---------------");
+
+	return minError;
 }
 
 function gmmVSA1(img){
@@ -381,7 +510,7 @@ function gmmVSA2(img){
 	return maxError;
 }
 
-function gmmVSA3(img){
+function gmmVSA_UV(img){
 	/* Partition indicies. */
 	p1_idx = 0;
 	p2_idx = 0;
@@ -465,7 +594,7 @@ function gmmVSA3(img){
 	print("P2_Lower: " + p2l_idx + "[" + values[p2l_idx] + "]");
 	print("P2_Upper: " + p2u_idx + "[" + values[p2u_idx] + "]");
 
-	minError = 99999999;
+	minError = 9999999999999;
 	minErr1 = 0;
 	minErr2 = 0;
 	minErr3 = 0;
