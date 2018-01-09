@@ -3,9 +3,9 @@
  * 
  * Author: Steven Royal Oakes (soakes@wisc.edu)
  * 
- * Version: v1.0
+ * Version: v1.1
  * 
- * Date: 2018/01/05
+ * Date: 2018/01/09
  */
 
 macro "Void Whizzard"{
@@ -485,13 +485,25 @@ macro "Void Whizzard"{
 	for (p = 0; p < binOverFiles.length; p++){
 		roist = roiManager("Count");
 		open(binDir + File.separator + binOverFiles[p]);
-		saveZip = getTitle() + ".zip";
-		run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
-		ovselc = roiSelect(roist, roiManager("Count"));
-		roiManager("Select", ovselc);
-		roiManager("Save", binDir + File.separator + saveZip);
-		roiManager("Select", ovselc);
-		roiManager("Delete");
+		co = nResults;
+		run("Measure");
+		if (getResult("Mean", co) != 0){
+			selectWindow("Results");
+			selectWindow("Results");
+			run("Close");
+			
+			saveZip = getTitle() + ".zip";
+			run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
+			ovselc = roiSelect(roist, roiManager("Count"));
+			roiManager("Select", ovselc);
+			roiManager("Save", binDir + File.separator + saveZip);
+			roiManager("Select", ovselc);
+			roiManager("Delete");
+		} else {
+			selectWindow("Results");
+			selectWindow("Results");
+			run("Close");
+		}
 	}
 	
 	waitForUser("Void Whizzard", "The Void Whizzard has finished executing.");
@@ -524,6 +536,8 @@ function analyzeSpots(img, convA, pWidth, pHeight, pUnits){
 
 	if (convA){
 		setScale(img, pWidth, pHeight, pUnits);
+	} else{
+		run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
 	}
 
 	ell_idx = roiManager("Count");
@@ -1154,6 +1168,11 @@ function gmmVSA_UV(img){
 
 	if (max <= 3000){
 		selectImage(img);
+		setThreshold(min,max);
+		run("Convert to Mask");
+		resetThreshold();
+		run("Invert");
+		run("8-bit");
 		return 0;
 	}
 
@@ -1319,6 +1338,11 @@ function gmmVSA_N(img){
 
 	if (max <= 3000){
 		selectImage(img);
+		setThreshold(min,max);
+		run("Convert to Mask");
+		resetThreshold();
+		run("Invert");
+		run("8-bit");
 		return 0;
 	}
 
