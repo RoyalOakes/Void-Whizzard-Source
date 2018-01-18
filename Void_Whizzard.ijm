@@ -3,15 +3,15 @@
  * 
  * Author: Steven Royal Oakes (soakes@wisc.edu)
  * 
- * Version: v1.1
+ * Version: v1.2
  * 
- * Date: 2018/01/09
+ * Date: 2018/01/18
  */
 
-macro "Void Whizzard"{
+macro "Void Whizzard v1.2"{
 	VSAtypes = newArray("Ultraviolet", "Ninhydrin");
 
-	Dialog.create("User Settings");
+	Dialog.create("Void Whizzard (v1.2) Settings");
 	Dialog.addString("Spot Size: ", "0-infinity", 12);
 	Dialog.addString("Circularity: ", "0-1", 12);
 	Dialog.addString("Bins: ", "0-0.1-0.25-0.5-1-2-3-4", 12);
