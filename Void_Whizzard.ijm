@@ -3,15 +3,15 @@
  * 
  * Author: Steven Royal Oakes (soakes@wisc.edu)
  * 
- * Version: v1.2
+ * Version: v1.3
  * 
- * Date: 2018/01/18
+ * Date: 2018/01/19
  */
 
-macro "Void Whizzard v1.2"{
+macro "Void Whizzard v1.3"{
 	VSAtypes = newArray("Ultraviolet", "Ninhydrin");
 
-	Dialog.create("Void Whizzard (v1.2) Settings");
+	Dialog.create("Void Whizzard (v1.3) Settings");
 	Dialog.addString("Spot Size: ", "0-infinity", 12);
 	Dialog.addString("Circularity: ", "0-1", 12);
 	Dialog.addString("Bins: ", "0-0.1-0.25-0.5-1-2-3-4", 12);
@@ -142,7 +142,7 @@ macro "Void Whizzard v1.2"{
 		for (i = 0; i < imglist.length; i++){
 			curr_img = imglist[i];
 			if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-				open(inDir + File.separator + curr_img);
+				run("Bio-Formats Importer", "open=[" + inDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
 				preprocess(curr_img);
 				isolateLargestSpot(curr_img);
 				run("Select None");
@@ -210,7 +210,7 @@ macro "Void Whizzard v1.2"{
 			curr_img = imglist[i];
 			k = 0;
 			if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-				open(inDir + File.separator + curr_img);
+				run("Bio-Formats Importer", "open=[" + inDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
 				pts = Array.getSequence(intsec_lens[k]);
 				for (j = 0; j < pts.length; j++){
 					pts[j] += intsec_idxs[k];
@@ -257,7 +257,7 @@ macro "Void Whizzard v1.2"{
 	for (i = 0; i < croplist.length; i++){
 		curr_img = croplist[i];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif")){
-			open(cropDir + curr_img);
+			run("Bio-Formats Importer", "open=[" + cropDir + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
 			run("16-bit");
 			process(croplist[i], type_choice);
 			saveAs("Tiff", binDir + curr_img);
@@ -301,7 +301,7 @@ macro "Void Whizzard v1.2"{
 	for (t = 0; t < imglist.length; t++){
 		curr_img = imglist[t];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-			open(binDir + File.separator + curr_img);
+			run("Bio-Formats Importer", "open=[" + binDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
 
 			c = nResults;
 			run("Measure");
