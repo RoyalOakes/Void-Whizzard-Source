@@ -17,6 +17,7 @@ macro "Void Whizzard v1.3"{
 	Dialog.addString("Bins: ", "0-0.1-0.25-0.5-1-2-3-4", 12);
 	Dialog.addNumber("% Offset Center: ", 30, 0, 6, "%");
 	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
+	Dialog.addCheckbox("Convert pixels to area", true);
 	Dialog.addCheckbox("Convert area to volume", true);
 	Dialog.addMessage("If \"Convert area to volume\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
 	Dialog.addNumber("Width: ", 10.875, 3, 12, "");
@@ -66,15 +67,21 @@ macro "Void Whizzard v1.3"{
 
 	centOff = Dialog.getNumber();
 	cornOff = Dialog.getNumber();
-	
+
+	convertPixel = Dialog.getCheckbox();	// Convert pixels to area
 	convertVolume = Dialog.getCheckbox();	// Convert the area to volume
+
+	// Check if the conv.txt file exists.
+	if (!File.exists(inDir + File.separator + "conv.txt")){
+		exit("Error: If \"Convert area to volume\" is selected then a conv.txt file must be placed in the input directory.");
+	}
 
 	paperWidth  = Dialog.getNumber();
 	paperHeight = Dialog.getNumber();
 	paperUnits  = Dialog.getString();
 	paperUnitsV = Dialog.getString();
 
-	if (!convertVolume){
+	if (!convertVolume && !convertPixel){
 		paperUnits = "pixel";
 	}
 
@@ -295,10 +302,15 @@ macro "Void Whizzard v1.3"{
 		//print(a + ", " + b);
 	}
 
+	convResults = false;
+	if (convertVolume || convertPixel) {
+		convResults = true;
+	}
+
 	initAnalysisTable("Summary");
 	//initAnalysisTable("RAW");
 	i = 0;
-	for (t = 0; t < imglist.length; t++){
+	for (t = 0; t < imglist.length; t++){ /* */
 		curr_img = imglist[t];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
 			//run("Bio-Formats Importer", "open=[" + binDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
@@ -332,11 +344,12 @@ macro "Void Whizzard v1.3"{
 			
 				IJ.renameResults("Results", "Analysis Summary Results");
 				i++;
-			} else {
+			} else { /* */
 				selectWindow("Results");
 				selectWindow("Results");
 				run("Close");
-				analyzeSpots(curr_img, convertVolume, paperWidth, paperHeight, paperUnits);
+				
+				analyzeSpots(curr_img, convResults, paperWidth, paperHeight, paperUnits);
 				
 				size_u = parseFloat(size_u);
 				if (isNaN(size_u)){
@@ -398,7 +411,6 @@ macro "Void Whizzard v1.3"{
 				
 				IJ.renameResults("Results", "Ellipses");
 			
-	
 				// Measure ellipses in center.
 				areaCenter = 0;
 				
