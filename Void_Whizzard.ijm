@@ -301,8 +301,9 @@ macro "Void Whizzard v1.3"{
 	for (t = 0; t < imglist.length; t++){
 		curr_img = imglist[t];
 		if (endsWith(curr_img, "TIF") || endsWith(curr_img, "tif") || endsWith(curr_img, "png")){
-			run("Bio-Formats Importer", "open=[" + binDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
-
+			//run("Bio-Formats Importer", "open=[" + binDir + File.separator + curr_img + "] color_mode=Default open_files rois_import=[ROI manager] view=[Standard ImageJ] stack_order=Default");
+			open(binDir + File.separator + curr_img);
+			
 			c = nResults;
 			run("Measure");
 			if (getResult("Mean", c) == 0 || isNaN(getResult("Mean", c))){
@@ -359,7 +360,9 @@ macro "Void Whizzard v1.3"{
 				totArea = 0;
 				totVolume = 0;
 				totCount = 0;
-				totBins = newArray(bins.length);
+				totBinsLength = bins.length;
+				totBins = newArray(totBinsLength);
+				
 	
 				IJ.renameResults("Ellipses", "Results");
 				num = nResults;
@@ -381,7 +384,7 @@ macro "Void Whizzard v1.3"{
 						currCirc = getResult("Circ.", k);
 						if ((currArea < size_u && currArea > size_d) && (currCirc < circ_u && currCirc > circ_d)){
 							if (j < (totBins.length - 1)){
-								if (currArea > bins[j] && currArea < bins[j+1]){
+								if (currArea > bins[j] && currArea <= bins[j+1]){
 									totBins[j] += 1;
 								}
 							} else {
