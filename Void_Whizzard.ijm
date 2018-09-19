@@ -19,10 +19,9 @@ macro "Void Whizzard v1.3"{
 	Dialog.addNumber("% Offset Corners: ", 5, 0, 6, "%");
 	Dialog.addCheckbox("Convert pixels to area", true);
 	Dialog.addCheckbox("Convert area to volume", true);
-	Dialog.addMessage("If \"Convert area to volume\" is selected,\ngive the width and height of the paper in real units,\notherwise leave the boxes blank.");
-	Dialog.addNumber("Width: ", 10.875, 3, 12, "");
-	Dialog.addNumber("Height: ", 6.375, 3, 12, "");
-	Dialog.addString("Area Units: ", "inch", 12);
+	Dialog.addNumber("Width: ", 27.6225, 3, 12, "");
+	Dialog.addNumber("Height: ", 16.1925, 3, 12, "");
+	Dialog.addString("Area Units: ", "cm", 12);
 	Dialog.addString("Volume Units: ", "uL", 12);
 	Dialog.addChoice("Type of VSA:", VSAtypes, "Ultraviolet");
 	//Dialog.addCheckbox("Verbose", false);
@@ -71,11 +70,6 @@ macro "Void Whizzard v1.3"{
 	convertPixel = Dialog.getCheckbox();	// Convert pixels to area
 	convertVolume = Dialog.getCheckbox();	// Convert the area to volume
 
-	// Check if the conv.txt file exists.
-	if (!File.exists(inDir + File.separator + "conv.txt")){
-		exit("Error: If \"Convert area to volume\" is selected then a conv.txt file must be placed in the input directory.");
-	}
-
 	paperWidth  = Dialog.getNumber();
 	paperHeight = Dialog.getNumber();
 	paperUnits  = Dialog.getString();
@@ -119,6 +113,11 @@ macro "Void Whizzard v1.3"{
 	//Open Images
 	inDir = getDirectory("Choose Input Directory");	// The directory that holds the input images.
 	imglist = getFileList(inDir);				// The list of files in the inDir.
+
+	// Check if the conv.txt file exists.
+	if (!File.exists(inDir + File.separator + "conv.txt") && convertVolume){
+		exit("Error: If \"Convert area to volume\" is selected then a conv.txt file must be placed in the input directory.");
+	}
 
 	if (!precropped){
 		houghDir = inDir + "hough" + File.separator;	// The directory where the hough transforms will be saved.
@@ -490,9 +489,15 @@ macro "Void Whizzard v1.3"{
 			}
 		}
 	}
-	wait(500);
-	saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
-	wait(500);
+
+	k = 0;
+	do {
+		wait(1000);
+		selectWindow("Analysis Summary Results");
+		saveAs("Analysis Summary Results", inDir + File.separator + "Summary.csv");
+		wait(1000);
+		k++;
+	} while (!File.exists(inDir + File.separator + "Summary.csv") && k < 4);
 
 	// Create overlay files
 	binOverFiles = getFileList(binDir);
@@ -509,11 +514,14 @@ macro "Void Whizzard v1.3"{
 			
 			saveZip = getTitle() + ".zip";
 			run("Ellipse Split", "binary=[Use standard watershed] add_to_manager merge_when_relativ_overlap_larger_than_threshold overlap=95 major=0-Infinity minor=0-Infinity aspect=1-Infinity");
-			ovselc = roiSelect(roist, roiManager("Count"));
-			roiManager("Select", ovselc);
-			roiManager("Save", binDir + File.separator + saveZip);
-			roiManager("Select", ovselc);
-			roiManager("Delete");
+			
+			if (roist != roiManager("Count")) {
+				ovselc = roiSelect(roist, roiManager("Count"));
+				roiManager("Select", ovselc);
+				roiManager("Save", binDir + File.separator + saveZip);
+				roiManager("Select", ovselc);
+				roiManager("Delete");
+			}
 		} else {
 			selectWindow("Results");
 			selectWindow("Results");

@@ -1,7 +1,7 @@
 macro "VSA_GMM"{
 	img = getImageID();
-	//gmmVSA_UV(img);
-	gmmVSA_N(img);
+	gmmVSA_UV(img);
+	//gmmVSA_N(img);
 }
 
 function gmmVSA_N(img){
@@ -587,12 +587,12 @@ function gmmVSA_UV(img){
 	}
 	
 	// Debugging
-	print("Min: " + min + ", Max: " + max);
-	Array.print(values);
-	print("P1_Lower: " + p1l_idx + "[" + values[p1l_idx] + "]");
-	print("P1_Upper: " + p1u_idx + "[" + values[p1u_idx] + "]");
-	print("P2_Lower: " + p2l_idx + "[" + values[p2l_idx] + "]");
-	print("P2_Upper: " + p2u_idx + "[" + values[p2u_idx] + "]");
+	//print("Min: " + min + ", Max: " + max);
+	//Array.print(values);
+	//print("P1_Lower: " + p1l_idx + "[" + values[p1l_idx] + "]");
+	//print("P1_Upper: " + p1u_idx + "[" + values[p1u_idx] + "]");
+	//print("P2_Lower: " + p2l_idx + "[" + values[p2l_idx] + "]");
+	//print("P2_Upper: " + p2u_idx + "[" + values[p2u_idx] + "]");
 
 	minError = 9999999999999;
 	minErr1 = 0;
@@ -629,11 +629,11 @@ function gmmVSA_UV(img){
 		}
 	}
 
-	print("P1: " + p1min_idx + "[" + values[p1min_idx] + "]" + ", P2: " + p2min_idx + "[" + values[p2min_idx] + "]");
-	print("");
-	print("Max: " + p1min[0] + ", Mu: " + p1min[1] + ", Variance: " + p1min[2]);
-	print("Max: " + p2min[0] + ", Mu: " + p2min[1] + ", Variance: " + p2min[2]);
-	print("Max: " + p3min[0] + ", Mu: " + p3min[1] + ", Variance: " + p3min[2]);
+	//print("P1: " + p1min_idx + "[" + values[p1min_idx] + "]" + ", P2: " + p2min_idx + "[" + values[p2min_idx] + "]");
+	//print("");
+	//print("Max: " + p1min[0] + ", Mu: " + p1min[1] + ", Variance: " + p1min[2]);
+	//print("Max: " + p2min[0] + ", Mu: " + p2min[1] + ", Variance: " + p2min[2]);
+	//print("Max: " + p3min[0] + ", Mu: " + p3min[1] + ", Variance: " + p3min[2]);
 
 	gy1 = newArray(256);
 	for (i = 0; i < 256; i++){
@@ -654,22 +654,24 @@ function gmmVSA_UV(img){
 	Plot.setColor("black");
 	Plot.add("line", values, counts);
 	Plot.setLimitsToFit();
+	
 	Plot.setColor("blue");
 	Plot.add("line", values, gy1);
 	Plot.setColor("green");
 	Plot.add("line", values, gy2);
 	Plot.setColor("red");
 	Plot.add("line", values, gy3);
+	
 	Plot.show();
 
 	thresh = calcThreshold(p2min[0], p2min[1], p2min[2], p3min[0], p3min[1], p3min[2]);
-	print("Threshold: " + thresh);
+	//print("Threshold: " + thresh);
 
 	selectImage(img);
 	setThreshold(values[thresh],65535);
 	run("Convert to Mask");
 	resetThreshold();
-	print("---------------");
+	//print("---------------");
 
 	return minError;
 }
